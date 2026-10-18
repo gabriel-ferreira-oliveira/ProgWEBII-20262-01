@@ -10,7 +10,7 @@ import { createTableSql } from './create-table-sql';
 import { Database } from './database';
 import { Column, Entity, PrimaryKey } from './entity';
 
-/** Réplicas mini-ORM das tabelas ainda não decoradas (a de `movies` já é a classe real — T5.9.2). */
+/** Réplicas mini-ORM das tabelas ainda não decoradas (`movies` e `series` já são as classes reais — T5.9.2/3). */
 
 @Entity('users')
 class User {
@@ -43,39 +43,6 @@ class User {
 
   @Column({ name: 'total_minutes', default: 0 })
   totalMinutes!: number;
-
-  @Column({ name: 'created_at' })
-  createdAt!: string;
-
-  @Column({ type: String, name: 'deleted_at', nullable: true })
-  deletedAt!: string | null;
-}
-
-@Entity('series')
-class Series {
-  @PrimaryKey({ autoIncrement: false })
-  id!: number;
-
-  @Column()
-  title!: string;
-
-  @Column({ type: String, nullable: true })
-  genre!: string | null;
-
-  @Column({ type: String, nullable: true })
-  synopsis!: string | null;
-
-  @Column({ type: Number, nullable: true })
-  year!: number | null;
-
-  @Column({ type: Number, name: 'duration_min', nullable: true })
-  durationMin!: number | null;
-
-  @Column({ type: Number, nullable: true })
-  episodes!: number | null;
-
-  @Column({ default: 0 })
-  season!: number;
 
   @Column({ name: 'created_at' })
   createdAt!: string;
@@ -182,7 +149,7 @@ describe('createTableSql (T5.5)', () => {
   const cases: Array<[string, new () => object]> = [
     ['users', User],
     ['movies', MovieEntity],
-    ['series', Series],
+    ['series', SeriesEntity],
     ['watched_movies', WatchedMovie],
     ['watched_series', WatchedSeries],
     ['favorites', Favorite],
