@@ -1,8 +1,8 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from '../../../framework/validation/decorators';
 
 export class UpdateSeriesDto {
-  @ApiPropertyOptional({ example: 'Nova sinopse da serie.', nullable: false })
+  @ApiProperty({ example: 'Nova sinopse da serie.', nullable: false })
   @IsString()
   synopsis!: string;
 }

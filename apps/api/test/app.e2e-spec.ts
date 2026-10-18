@@ -240,6 +240,18 @@ describe('CeViu API (e2e)', () => {
     expect(body.title).toBe('Matriz');
   });
 
+  it('rejeita alteracao de sinopse sem o campo com 400 (synopsis obrigatorio)', async () => {
+    const response = await request(httpServer)
+      .patch('/api/movies/1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(400);
+
+    expect(readJson<{ message: string[] }>(response).message).toEqual([
+      'synopsis must be a string',
+    ]);
+  });
+
   it('lista a comunidade excluindo o usuario logado', async () => {
     await request(httpServer)
       .post('/api/auth/register')
