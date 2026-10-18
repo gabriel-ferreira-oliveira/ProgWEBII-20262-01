@@ -12,47 +12,19 @@
  * - Campos ordenados por `order` (empate = ordem de declaração); `undefined` quando não há
  *   campos nem regras (form desconhecido → 404 na T3.4).
  * - Lido por: controller de metadados (T3.4) e front (`buildForm`, T3.7).
+ * - Os tipos do descritor (`FieldMetadata`/`FormRule`/`FormMetadata`) vivem em `@ceviu/shared` (T3.3).
  */
 import { getFormFields } from './field';
-import type { FieldControl } from './field';
 import type { MetadataTarget } from '../reflection/class-metadata';
 import { exactlyOneOfMessages } from '../validation/validate';
 import { getClassValidationRules, getValidationRules } from '../validation/validation-registry';
 import type { ClassValidationRule, ValidationRule } from '../validation/validation-registry';
-
-/** Descritor de um campo pronto para o front: UI (`@Field`) + restrições (regras de validação). */
-export interface FieldMetadata {
-  /** Propriedade do DTO (nome do controle no front). */
-  name: string;
-  /** Rótulo exibido (o `:` final é do template). */
-  label: string;
-  /** Controle visual. */
-  control: FieldControl;
-  /** Posição na UI (menor primeiro). */
-  order: number;
-  /** Ausente falha no motor (não é `@IsOptional`). */
-  required: boolean;
-  /** Menor valor aceito (`@Min`), quando declarado. */
-  min?: number;
-  /** Comprimento máximo do texto (`@MaxLength`), quando declarado. */
-  maxLength?: number;
-  /** Regex em forma de string (`RegExp.toString()`), quando declarado (`@Matches`). */
-  pattern?: string;
-}
-
-/** Regra de classe pronta para o front, com as mensagens efetivas (decorator ou defaults do motor). */
-export interface FormRule {
-  kind: 'exactlyOneOf';
-  properties: string[];
-  missingMessage: string;
-  multipleMessage: string;
-}
-
-/** Formulário completo: campos (por `order`) + regras de classe. */
-export interface FormMetadata {
-  fields: FieldMetadata[];
-  rules: FormRule[];
-}
+import type {
+  FieldControl,
+  FieldMetadata,
+  FormMetadata,
+  FormRule,
+} from '@ceviu/shared';
 
 /** Primeira regra do tipo pedido (determinístico: ordem de aplicação dos decorators). */
 function firstRule<K extends ValidationRule['kind']>(

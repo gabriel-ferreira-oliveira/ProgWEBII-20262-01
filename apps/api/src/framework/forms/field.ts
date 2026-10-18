@@ -16,11 +16,9 @@ import {
   getOwnMetadata,
 } from '../reflection/class-metadata';
 import type { MetadataTarget } from '../reflection/class-metadata';
+import type { FieldControl } from '@ceviu/shared';
 
-/** Controle visual do campo (mapeado pelo template em T3.8). */
-export type FieldControl = 'text' | 'password' | 'number' | 'textarea';
-
-/** **Opções do decorator** (só de UI). O descritor de campo do `describeForm` é `FieldMetadata` (T3.2). */
+/** **Opções do decorator** (só de UI). O descritor de campo do `describeForm` é `FieldMetadata` (@ceviu/shared). */
 export interface FieldOptions {
   /** Rótulo exibido (o `:` final é do template, T3.8). */
   label: string;
