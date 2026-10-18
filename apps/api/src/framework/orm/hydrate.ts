@@ -12,10 +12,8 @@
  */
 import { getEntityMeta } from './entity';
 import type { EntityMeta } from './entity';
+import type { Row } from './database';
 import type { InferredType } from '../reflection/infer-type';
-
-/** Linha como o SQLite devolve/aceita: colunas snake_case, valores primitivos. */
-export type Row = Record<string, string | number | null>;
 
 /** Construtor de entidade (sem argumentos, como as classes decoradas). */
 export type EntityClass<T extends object = object> = new () => T;
