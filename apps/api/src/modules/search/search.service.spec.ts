@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Movie } from '../../database/entities/movie.entity';
@@ -38,18 +37,6 @@ describe('SearchService', () => {
       ],
     }).compile();
     service = moduleRef.get(SearchService);
-  });
-
-  it('rejeita quando nenhum filtro foi informado', async () => {
-    await expect(service.search({})).rejects.toThrow(
-      new BadRequestException('Campos de pesquisa vazio'),
-    );
-  });
-
-  it('rejeita quando os dois filtros foram informados', async () => {
-    await expect(service.search({ title: 'a', id: 1 })).rejects.toThrow(
-      new BadRequestException('Apenas um campo pode ser prenchido para a pesquisa'),
-    );
   });
 
   it('busca por titulo (contains, case-insensitive) com escape de curingas', async () => {

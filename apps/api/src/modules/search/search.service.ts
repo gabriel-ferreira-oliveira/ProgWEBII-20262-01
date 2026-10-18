@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { SearchResultDto } from '@ceviu/shared';
@@ -16,24 +16,13 @@ export class SearchService {
     private readonly series: Repository<Series>,
   ) {}
 
+  /** O pipe global garante exatamente um filtro (`@ExactlyOneOf` no DTO) antes de chegar aqui. */
   async search(query: SearchQueryDto): Promise<SearchResultDto> {
-    const title = query.title;
-    const id = query.id;
-    const hasTitle = title !== undefined && title.length > 0;
-    const hasId = id !== undefined;
-
-    if (!hasTitle && !hasId) {
-      throw new BadRequestException('Campos de pesquisa vazio');
-    }
-    if (hasTitle && hasId) {
-      throw new BadRequestException('Apenas um campo pode ser prenchido para a pesquisa');
+    if (query.id !== undefined) {
+      return this.searchById(query.id);
     }
 
-    if (hasId && id !== undefined) {
-      return this.searchById(id);
-    }
-
-    return this.searchByTitle(title ?? '');
+    return this.searchByTitle(query.title ?? '');
   }
 
   private async searchById(id: number): Promise<SearchResultDto> {

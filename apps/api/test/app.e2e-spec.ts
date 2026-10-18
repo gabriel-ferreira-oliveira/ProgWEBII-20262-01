@@ -129,7 +129,17 @@ describe('CeViu API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(400);
 
-    expect(readJson<{ message: string }>(response).message).toBe('Campos de pesquisa vazio');
+    expect(readJson<{ message: string[] }>(response).message).toEqual(['Campos de pesquisa vazio']);
+  });
+
+  it('pesquisa com title vazio trata como ausente (mensagem do legado)', async () => {
+    const response = await request(httpServer)
+      .get('/api/search')
+      .query({ title: '' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+
+    expect(readJson<{ message: string[] }>(response).message).toEqual(['Campos de pesquisa vazio']);
   });
 
   it('pesquisa com dois filtros devolve a mensagem do legado', async () => {
@@ -139,9 +149,9 @@ describe('CeViu API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(400);
 
-    expect(readJson<{ message: string }>(response).message).toBe(
+    expect(readJson<{ message: string[] }>(response).message).toEqual([
       'Apenas um campo pode ser prenchido para a pesquisa',
-    );
+    ]);
   });
 
   it('pesquisa por id exato', async () => {
