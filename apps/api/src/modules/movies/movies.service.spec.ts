@@ -6,31 +6,16 @@ import { Movie } from '../../database/entities/movie.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 import { makeFavorite, makeMovie, makeUser, makeWatchedMovie } from '../../testing/factories';
+import { createRepositoryMock } from '../../testing/repository-mock';
 import { MoviesService } from './movies.service';
 
 describe('MoviesService', () => {
   let service: MoviesService;
 
-  const moviesRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    save: jest.fn(),
-    softDelete: jest.fn(),
-  };
-  const usersRepository = {
-    findOne: jest.fn(),
-    increment: jest.fn(),
-  };
-  const watchedMoviesRepository = {
-    count: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
-  const favoritesRepository = {
-    count: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
+  const moviesRepository = createRepositoryMock<Movie>('find', 'findOne', 'save', 'softDelete');
+  const usersRepository = createRepositoryMock<User>('findOne', 'increment');
+  const watchedMoviesRepository = createRepositoryMock<WatchedMovie>('count', 'create', 'save');
+  const favoritesRepository = createRepositoryMock<Favorite>('count', 'create', 'save');
 
   beforeEach(async () => {
     jest.clearAllMocks();

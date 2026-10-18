@@ -6,31 +6,16 @@ import { Series } from '../../database/entities/series.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedSeries } from '../../database/entities/watched-series.entity';
 import { makeSeries, makeUser } from '../../testing/factories';
+import { createRepositoryMock } from '../../testing/repository-mock';
 import { SeriesService } from './series.service';
 
 describe('SeriesService', () => {
   let service: SeriesService;
 
-  const seriesRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    save: jest.fn(),
-    softDelete: jest.fn(),
-  };
-  const usersRepository = {
-    findOne: jest.fn(),
-    increment: jest.fn(),
-  };
-  const watchedSeriesRepository = {
-    count: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
-  const favoritesRepository = {
-    count: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
+  const seriesRepository = createRepositoryMock<Series>('find', 'findOne', 'save', 'softDelete');
+  const usersRepository = createRepositoryMock<User>('findOne', 'increment');
+  const watchedSeriesRepository = createRepositoryMock<WatchedSeries>('count', 'create', 'save');
+  const favoritesRepository = createRepositoryMock<Favorite>('count', 'create', 'save');
 
   beforeEach(async () => {
     jest.clearAllMocks();

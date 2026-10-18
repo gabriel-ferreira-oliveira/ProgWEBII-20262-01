@@ -6,6 +6,7 @@ import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 import { WatchedSeries } from '../../database/entities/watched-series.entity';
 import { makeFavorite, makeUser, makeWatchedMovie } from '../../testing/factories';
+import { createRepositoryMock } from '../../testing/repository-mock';
 import { UsersService } from './users.service';
 
 describe('UsersService', () => {
@@ -16,19 +17,10 @@ describe('UsersService', () => {
     orderBy: jest.fn().mockReturnThis(),
     getMany: jest.fn(),
   };
-  const usersRepository = {
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
-  const watchedMoviesRepository = {
-    find: jest.fn(),
-  };
-  const watchedSeriesRepository = {
-    find: jest.fn(),
-  };
-  const favoritesRepository = {
-    find: jest.fn(),
-  };
+  const usersRepository = createRepositoryMock<User>('findOne', 'createQueryBuilder');
+  const watchedMoviesRepository = createRepositoryMock<WatchedMovie>('find');
+  const watchedSeriesRepository = createRepositoryMock<WatchedSeries>('find');
+  const favoritesRepository = createRepositoryMock<Favorite>('find');
 
   beforeEach(async () => {
     jest.clearAllMocks();

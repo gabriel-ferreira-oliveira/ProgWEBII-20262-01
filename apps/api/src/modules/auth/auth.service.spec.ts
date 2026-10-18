@@ -6,6 +6,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../database/entities/user.entity';
 import { makeUser } from '../../testing/factories';
+import { createRepositoryMock } from '../../testing/repository-mock';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -16,12 +17,7 @@ describe('AuthService', () => {
     where: jest.fn().mockReturnThis(),
     getOne: jest.fn(),
   };
-  const usersRepository = {
-    createQueryBuilder: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
+  const usersRepository = createRepositoryMock<User>('createQueryBuilder', 'findOne', 'create', 'save');
   const jwtService = {
     sign: jest.fn().mockReturnValue('token-de-teste'),
   };

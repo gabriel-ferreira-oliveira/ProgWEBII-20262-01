@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Movie } from '../../database/entities/movie.entity';
 import { Series } from '../../database/entities/series.entity';
 import { makeMovie, makeSeries } from '../../testing/factories';
+import { createRepositoryMock } from '../../testing/repository-mock';
 import { SearchService } from './search.service';
 
 describe('SearchService', () => {
@@ -13,14 +14,8 @@ describe('SearchService', () => {
     orderBy: jest.fn().mockReturnThis(),
     getMany: jest.fn(),
   };
-  const moviesRepository = {
-    find: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
-  const seriesRepository = {
-    find: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
+  const moviesRepository = createRepositoryMock<Movie>('find', 'createQueryBuilder');
+  const seriesRepository = createRepositoryMock<Series>('find', 'createQueryBuilder');
 
   beforeEach(async () => {
     jest.clearAllMocks();

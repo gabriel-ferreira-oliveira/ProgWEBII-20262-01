@@ -6,30 +6,15 @@ import type { Movie } from '../../database/entities/movie.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 import { makeMovie, makeUser } from '../../testing/factories';
+import { createRepositoryMock } from '../../testing/repository-mock';
 import { toMovieDto } from '../mappers';
 import { MediaService } from './media-service';
 
 describe('MediaService', () => {
-  const repository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    save: jest.fn(),
-    softDelete: jest.fn(),
-  };
-  const usersRepository = {
-    findOne: jest.fn(),
-    increment: jest.fn(),
-  };
-  const watchedRepository = {
-    count: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
-  const favoritesRepository = {
-    count: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
+  const repository = createRepositoryMock<Movie>('find', 'findOne', 'save', 'softDelete');
+  const usersRepository = createRepositoryMock<User>('findOne', 'increment');
+  const watchedRepository = createRepositoryMock<WatchedMovie>('count', 'create', 'save');
+  const favoritesRepository = createRepositoryMock<Favorite>('count', 'create', 'save');
 
   function createService(countTimeOnFavorite: boolean): MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie> {
     return new MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie>({
