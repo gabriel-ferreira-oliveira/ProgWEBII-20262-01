@@ -7,8 +7,6 @@ export const LEGACY_MESSAGES = {
   loginInvalido: 'Email ou senha inválidos!',
   cadastroOk: 'Usuário cadastrado com sucesso!',
   cadastroInvalido: 'Campos inválidos!',
-  pesquisaVazia: 'Campos de pesquisa vazio',
-  pesquisaDoisCampos: 'Apenas um campo pode ser prenchido para a pesquisa',
   assistidoOk: 'Adicinado ao seu perfil!',
   favoritoOk: 'Adicinado aos seu favoritos!',
   falhaAssistido: 'Falha ao marcar como assistido!',
