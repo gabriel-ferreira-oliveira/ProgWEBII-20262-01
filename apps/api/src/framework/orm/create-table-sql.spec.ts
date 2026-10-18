@@ -10,28 +10,7 @@ import { createTableSql } from './create-table-sql';
 import { Database } from './database';
 import { Column, Entity, PrimaryKey } from './entity';
 
-/** Réplicas mini-ORM das tabelas ainda não decoradas (`users`, `movies`, `series` e `watched_movies` já são as classes reais). */
-
-@Entity('watched_series')
-class WatchedSeries {
-  @PrimaryKey()
-  id!: number;
-
-  @Column({ name: 'user_id', type: Number })
-  userId!: number;
-
-  @Column({ name: 'series_id', type: Number, nullable: true })
-  seriesId!: number | null;
-
-  @Column({ name: 'title_snapshot' })
-  titleSnapshot!: string;
-
-  @Column({ type: Number })
-  position!: number;
-
-  @Column({ name: 'created_at' })
-  createdAt!: string;
-}
+/** Réplica mini-ORM da única tabela ainda não decorada (`favorites`); as demais já são as classes reais. */
 
 @Entity('favorites')
 class Favorite {
@@ -91,7 +70,7 @@ describe('createTableSql (T5.5)', () => {
     ['movies', MovieEntity],
     ['series', SeriesEntity],
     ['watched_movies', WatchedMovieEntity],
-    ['watched_series', WatchedSeries],
+    ['watched_series', WatchedSeriesEntity],
     ['favorites', Favorite],
   ];
 
