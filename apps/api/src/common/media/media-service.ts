@@ -2,14 +2,14 @@ import { NotFoundException } from '@nestjs/common';
 import type { FindOptionsOrder, FindOptionsWhere, Repository } from 'typeorm';
 
 /** Dependencias que variam por tipo de midia (filme ou serie) na `MediaService`. */
-export interface MediaRuntime<TEntity extends { id: number }, TDto> {
+export interface MediaRuntime<TEntity extends { id: number; synopsis: string | null }, TDto> {
   readonly repository: Repository<TEntity>;
   readonly toDto: (entity: TEntity) => TDto;
   readonly notFoundMessage: string;
 }
 
 /** Operacoes comuns a tipos de midia, por composicao com a `MediaRuntime` do tipo. */
-export class MediaService<TEntity extends { id: number }, TDto> {
+export class MediaService<TEntity extends { id: number; synopsis: string | null }, TDto> {
   constructor(private readonly runtime: MediaRuntime<TEntity, TDto>) {}
 
   async list(): Promise<TDto[]> {
@@ -33,5 +33,17 @@ export class MediaService<TEntity extends { id: number }, TDto> {
       throw new NotFoundException(this.runtime.notFoundMessage);
     }
     return entity;
+  }
+
+  async updateSynopsis(id: number, synopsis: string): Promise<TDto> {
+    const entity = await this.findEntity(id);
+    entity.synopsis = synopsis;
+    const saved = await this.runtime.repository.save(entity);
+    return this.runtime.toDto(saved);
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.findEntity(id);
+    await this.runtime.repository.softDelete({ id } as FindOptionsWhere<TEntity>);
   }
 }

@@ -10,6 +10,8 @@ describe('MediaService', () => {
   const repository = {
     find: jest.fn(),
     findOne: jest.fn(),
+    save: jest.fn(),
+    softDelete: jest.fn(),
   };
   let service: MediaService<Movie, MovieDto>;
 
@@ -55,5 +57,38 @@ describe('MediaService', () => {
 
     await expect(service.findOne(99)).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.findOne(99)).rejects.toThrow('Filme nao encontrado');
+  });
+
+  it('updateSynopsis altera somente a sinopse da entidade encontrada', async () => {
+    repository.findOne.mockResolvedValue(makeMovie());
+    repository.save.mockImplementation((entity) => Promise.resolve(entity));
+
+    const result = await service.updateSynopsis(1, 'Nova sinopse');
+
+    expect(repository.save).toHaveBeenCalledWith(makeMovie({ synopsis: 'Nova sinopse' }));
+    expect(result.synopsis).toBe('Nova sinopse');
+    expect(result.title).toBe('Matriz');
+  });
+
+  it('updateSynopsis propaga o 404 sem salvar', async () => {
+    repository.findOne.mockResolvedValue(null);
+
+    await expect(service.updateSynopsis(99, 'x')).rejects.toThrow('Filme nao encontrado');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('remove confere a existencia e faz soft delete pelo id', async () => {
+    repository.findOne.mockResolvedValue(makeMovie());
+
+    await service.remove(1);
+
+    expect(repository.softDelete).toHaveBeenCalledWith({ id: 1 });
+  });
+
+  it('remove propaga o 404 sem soft delete', async () => {
+    repository.findOne.mockResolvedValue(null);
+
+    await expect(service.remove(99)).rejects.toThrow('Filme nao encontrado');
+    expect(repository.softDelete).not.toHaveBeenCalled();
   });
 });

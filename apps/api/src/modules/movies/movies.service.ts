@@ -15,7 +15,7 @@ export class MoviesService {
 
   constructor(
     @InjectRepository(Movie)
-    private readonly movies: Repository<Movie>,
+    movies: Repository<Movie>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
     @InjectRepository(WatchedMovie)
@@ -43,15 +43,11 @@ export class MoviesService {
   }
 
   async updateSynopsis(id: number, synopsis: string): Promise<MovieDto> {
-    const movie = await this.findEntity(id);
-    movie.synopsis = synopsis;
-    const saved = await this.movies.save(movie);
-    return toMovieDto(saved);
+    return this.media.updateSynopsis(id, synopsis);
   }
 
   async remove(id: number): Promise<void> {
-    await this.findEntity(id);
-    await this.movies.softDelete({ id });
+    return this.media.remove(id);
   }
 
   async watch(id: number, userId: number): Promise<MovieWatchResultDto> {
