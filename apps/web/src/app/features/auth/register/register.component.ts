@@ -7,6 +7,7 @@ import type { RegisterRequestDto } from '@ceviu/shared';
 import { AuthApiService } from '../../../core/auth/auth-api.service';
 import { buildForm } from '../../../core/forms/build-form';
 import { MetadataApiService } from '../../../core/forms/metadata-api.service';
+import { payloadFromFields } from '../../../core/forms/payload';
 import { LEGACY_MESSAGES } from '../../../core/legacy-messages';
 import { NoticeService } from '../../../core/notices/notice.service';
 
@@ -61,7 +62,11 @@ export class RegisterComponent implements OnInit {
       this.notices.error(LEGACY_MESSAGES.cadastroInvalido);
       return;
     }
-    const payload = this.montarPayload(formulario.getRawValue());
+    // Payload do contrato (`RegisterRequestDto`): nomes do descritor = propriedades do DTO.
+    const payload = payloadFromFields(
+      this.campos(),
+      formulario.getRawValue(),
+    ) as unknown as RegisterRequestDto;
     this.carregando.set(true);
     this.authApi.register(payload).subscribe({
       next: () => {
@@ -80,20 +85,6 @@ export class RegisterComponent implements OnInit {
         this.notices.error('Falha ao conectar com o servidor!');
       },
     });
-  }
-
-  /**
-   * Payload do contrato (`RegisterRequestDto`): os nomes do descritor sao as
-   * propriedades do DTO (contrato verificado no e2e); `control: 'number'` converte
-   * com `Number.parseInt` (paridade com o `Integer.parseInt` do legado).
-   */
-  private montarPayload(valores: Record<string, string>): RegisterRequestDto {
-    const payload: Record<string, string | number> = {};
-    for (const campo of this.campos()) {
-      const valor = valores[campo.name];
-      payload[campo.name] = campo.control === 'number' ? Number.parseInt(valor, 10) : valor;
-    }
-    return payload as unknown as RegisterRequestDto;
   }
 
   protected limparCampos(): void {

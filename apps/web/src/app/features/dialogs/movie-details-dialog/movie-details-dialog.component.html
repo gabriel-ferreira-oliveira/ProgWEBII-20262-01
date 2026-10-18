@@ -25,8 +25,18 @@
       <p class="detalhe__linha">Duração: {{ formatarNumero(movie.durationMin) }} minutos</p>
       <p class="detalhe__linha">Gênero: {{ formatarTexto(movie.genre) }}</p>
 
-      <h4 class="detalhe__rotulo">Sinopse:</h4>
-      <textarea class="campo-ceviu detalhe__sinopse" rows="7" [formControl]="sinopse"></textarea>
+      @if (form(); as formulario) {
+        <div [formGroup]="formulario">
+          @for (campo of campos(); track campo.name) {
+            <h4 class="detalhe__rotulo">{{ campo.label }}:</h4>
+            <textarea
+              class="campo-ceviu detalhe__sinopse"
+              rows="7"
+              [formControlName]="campo.name"
+            ></textarea>
+          }
+        </div>
+      }
     </div>
   }
 </mat-dialog-content>

@@ -4,42 +4,53 @@
   </section>
 
   <section class="tela-dividida__painel-branco">
-    <form class="form-ceviu" [formGroup]="form" (ngSubmit)="entrar()">
-      <h1 class="form-ceviu__titulo">LOGIN</h1>
+    @if (form(); as formulario) {
+      <form class="form-ceviu" [formGroup]="formulario" (ngSubmit)="entrar()">
+        <h1 class="form-ceviu__titulo">LOGIN</h1>
 
-      <label class="campo-icone__rotulo" for="login-email">
-        <img src="imagens/icone_login.png" alt="" width="30" height="30" />
-        <span>Email:</span>
-      </label>
-      <input
-        id="login-email"
-        class="campo-ceviu"
-        type="text"
-        formControlName="email"
-        autocomplete="username"
-      />
+        @for (campo of campos(); track campo.name) {
+          <label class="campo-icone__rotulo" [for]="'login-' + campo.name">
+            <img
+              [src]="campo.control === 'password' ? 'imagens/icone_senha.png' : 'imagens/icone_login.png'"
+              alt=""
+              width="30"
+              height="30"
+            />
+            <span>{{ campo.label }}:</span>
+          </label>
+          <input
+            [id]="'login-' + campo.name"
+            class="campo-ceviu"
+            [type]="campo.control === 'password' ? 'password' : 'text'"
+            [attr.autocomplete]="campo.control === 'password' ? 'current-password' : 'username'"
+            [formControlName]="campo.name"
+          />
+        }
 
-      <label class="campo-icone__rotulo" for="login-senha">
-        <img src="imagens/icone_senha.png" alt="" width="30" height="30" />
-        <span>Senha:</span>
-      </label>
-      <input
-        id="login-senha"
-        class="campo-ceviu"
-        type="password"
-        formControlName="senha"
-        autocomplete="current-password"
-      />
+        <!-- Sem funcao (D-03/P-01): fica fora do formulario reativo (nao e do contrato). -->
+        <label class="lembrar-senha">
+          <input type="checkbox" />
+          Lembrar senha
+        </label>
 
-      <label class="lembrar-senha">
-        <input type="checkbox" formControlName="lembrarSenha" />
-        Lembrar senha
-      </label>
-
-      <div class="form-ceviu__botoes">
-        <button class="btn-ceviu" type="submit" [disabled]="carregando()">Entrar</button>
-        <button class="btn-ceviu" type="button" (click)="irParaCadastro()">Cadastrar</button>
+        <div class="form-ceviu__botoes">
+          <button class="btn-ceviu" type="submit" [disabled]="carregando()">Entrar</button>
+          <button class="btn-ceviu" type="button" (click)="irParaCadastro()">Cadastrar</button>
+        </div>
+      </form>
+    } @else if (carregandoMetadados()) {
+      <div class="form-ceviu">
+        <mat-progress-bar mode="indeterminate" />
       </div>
-    </form>
+    } @else if (erroMetadados(); as mensagem) {
+      <div class="form-ceviu">
+        <p class="erro-carregamento">
+          {{ mensagem }}
+          <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="recarregarMetadados()">
+            Tentar novamente
+          </button>
+        </p>
+      </div>
+    }
   </section>
 </div>
