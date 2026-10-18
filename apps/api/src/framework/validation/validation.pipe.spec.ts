@@ -1,8 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { ArgumentMetadata } from '@nestjs/common';
-import { IsString as LegacyIsString } from 'class-validator';
 import { ExactlyOneOf, IsInt, IsOptional, IsString, Min } from './decorators';
-import { ComposedValidationPipe } from './validation.pipe';
+import { FrameworkValidationPipe } from './validation.pipe';
 
 const body = (metatype: ArgumentMetadata['metatype']): ArgumentMetadata => ({
   type: 'body',
@@ -16,7 +15,7 @@ class TituloFake {
   title!: string;
 }
 
-/** DTO próprio com herança + regra de classe (mesma forma do SearchQueryDto futuro, T2.7). */
+/** DTO próprio com herança + regra de classe (mesma forma do SearchQueryDto, T2.7). */
 class BuscaBaseFake {
   @IsOptional()
   @IsString()
@@ -34,18 +33,15 @@ class BuscaBaseFake {
 })
 class BuscaFake extends BuscaBaseFake {}
 
-/** DTO legado: sem regras no registro próprio → delega ao ValidationPipe (morre na T2.8). */
-class LegacyFake {
-  @LegacyIsString()
+/** DTO sem regras próprias (nada no registro). */
+class SemRegrasFake {
   name!: string;
 }
 
 /** Captura a BadRequestException e devolve a resposta, garantindo o tipo lançado. */
-async function expectBadRequest(
-  run: () => unknown | Promise<unknown>,
-): Promise<BadRequestException> {
+function expectBadRequest(run: () => unknown): BadRequestException {
   try {
-    await run();
+    run();
   } catch (error) {
     expect(error).toBeInstanceOf(BadRequestException);
     return error as BadRequestException;
@@ -53,8 +49,8 @@ async function expectBadRequest(
   throw new Error('esperava uma BadRequestException');
 }
 
-describe('framework/validation/validation.pipe (T2.4)', () => {
-  const pipe = new ComposedValidationPipe();
+describe('framework/validation/validation.pipe (T2.4; simplificado na T2.8)', () => {
+  const pipe = new FrameworkValidationPipe();
 
   describe('classes com regras próprias (motor)', () => {
     it('válido: devolve instância da classe com os valores convertidos', () => {
@@ -69,8 +65,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       expect(result.id).toBe(1);
     });
 
-    it('inválido: lança BadRequestException com o formato do legado (message: string[])', async () => {
-      const error = await expectBadRequest(() => pipe.transform({ title: 5 }, body(TituloFake)));
+    it('inválido: lança BadRequestException com o formato do legado (message: string[])', () => {
+      const error = expectBadRequest(() => pipe.transform({ title: 5 }, body(TituloFake)));
       expect(error.getResponse()).toEqual({
         statusCode: 400,
         message: ['title must be a string'],
@@ -78,8 +74,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       });
     });
 
-    it('whitelist: chave fora do registro vira erro e não é copiada', async () => {
-      const error = await expectBadRequest(() =>
+    it('whitelist: chave fora do registro vira erro e não é copiada', () => {
+      const error = expectBadRequest(() =>
         pipe.transform({ title: 'matriz', hacker: 1 }, body(TituloFake)),
       );
       expect(error.getResponse()).toEqual({
@@ -89,8 +85,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       });
     });
 
-    it('erros de propriedade e whitelist, na ordem: propriedades → whitelist → classe', async () => {
-      const error = await expectBadRequest(() =>
+    it('erros de propriedade e whitelist, na ordem: propriedades → whitelist → classe', () => {
+      const error = expectBadRequest(() =>
         pipe.transform({ title: 5, hacker: 1 }, body(BuscaFake)),
       );
       expect(error.getResponse()).toEqual({
@@ -100,8 +96,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       });
     });
 
-    it('regra de classe herdada: nenhum campo preenchido → mensagem de ausência', async () => {
-      const error = await expectBadRequest(() => pipe.transform({}, body(BuscaFake)));
+    it('regra de classe herdada: nenhum campo preenchido → mensagem de ausência', () => {
+      const error = expectBadRequest(() => pipe.transform({}, body(BuscaFake)));
       expect(error.getResponse()).toEqual({
         statusCode: 400,
         message: ['Campos de pesquisa vazio'],
@@ -109,8 +105,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       });
     });
 
-    it('regra de classe herdada: dois campos preenchidos → mensagem de múltiplos', async () => {
-      const error = await expectBadRequest(() =>
+    it('regra de classe herdada: dois campos preenchidos → mensagem de múltiplos', () => {
+      const error = expectBadRequest(() =>
         pipe.transform({ title: 'matriz', id: 1 }, body(BuscaFake)),
       );
       expect(error.getResponse()).toEqual({
@@ -120,8 +116,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       });
     });
 
-    it('body ausente (nil): valida como objeto vazio, paridade com o toEmptyIfNil do legado', async () => {
-      const error = await expectBadRequest(() => pipe.transform(undefined, body(TituloFake)));
+    it('body ausente (nil): valida como objeto vazio, paridade com o toEmptyIfNil do legado', () => {
+      const error = expectBadRequest(() => pipe.transform(undefined, body(TituloFake)));
       expect(error.getResponse()).toEqual({
         statusCode: 400,
         message: ['title must be a string'],
@@ -129,8 +125,8 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
       });
     });
 
-    it('body ausente num DTO com regra de classe: cai na regra (futuro SearchQueryDto)', async () => {
-      const error = await expectBadRequest(() => pipe.transform(undefined, body(BuscaFake)));
+    it('body ausente num DTO com regra de classe: cai na regra (futuro SearchQueryDto)', () => {
+      const error = expectBadRequest(() => pipe.transform(undefined, body(BuscaFake)));
       expect(error.getResponse()).toEqual({
         statusCode: 400,
         message: ['Campos de pesquisa vazio'],
@@ -149,35 +145,26 @@ describe('framework/validation/validation.pipe (T2.4)', () => {
     });
   });
 
-  describe('classes sem regras próprias (delegação ao ValidationPipe legado)', () => {
-    it('valida com o class-validator do legado e mantém as mensagens', async () => {
-      const error = await expectBadRequest(() => pipe.transform({}, body(LegacyFake)));
-      expect(error.getResponse()).toEqual({
-        statusCode: 400,
-        message: ['name must be a string'],
-        error: 'Bad Request',
-      });
+  describe('valores e classes fora do escopo do motor (passthrough)', () => {
+    it('DTO sem regras próprias: devolve o valor como está', () => {
+      const value = { name: 'x' };
+      expect(pipe.transform(value, body(SemRegrasFake))).toBe(value);
     });
 
-    it('mantém o whitelist/forbidNonWhitelisted do legado', async () => {
-      const error = await expectBadRequest(() =>
-        pipe.transform({ name: 'x', extra: 1 }, body(LegacyFake)),
-      );
-      expect(error.getResponse()).toEqual({
-        statusCode: 400,
-        message: ['property extra should not exist'],
-        error: 'Bad Request',
-      });
-    });
-
-    it('metatipo primitivo (Object): devolve o valor como está', async () => {
+    it('metatipo primitivo (Object): devolve o valor como está', () => {
       const value = { q: '1' };
-      expect(await pipe.transform(value, body(Object))).toBe(value);
+      expect(pipe.transform(value, body(Object))).toBe(value);
     });
 
-    it('sem metatipo: devolve o valor como está', async () => {
+    it('sem metatipo: devolve o valor como está', () => {
       const value = { q: '1' };
-      expect(await pipe.transform(value, body(undefined))).toBe(value);
+      expect(pipe.transform(value, body(undefined))).toBe(value);
+    });
+
+    it('array ou primitivo com metatipo do motor: passa como está (não valida)', () => {
+      const list = [{ title: 'a' }];
+      expect(pipe.transform(list, body(BuscaFake))).toBe(list);
+      expect(pipe.transform('abc', body(TituloFake))).toBe('abc');
     });
   });
 });
