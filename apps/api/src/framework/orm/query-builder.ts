@@ -12,10 +12,10 @@
  * `IN` exige lista não vazia; `=`/`<>` com `null` viram `IS NULL`/`IS NOT NULL` (como no
  * `BaseRepository`); demais operadores com `null` falham.
  */
-import type { Database, SqlValue } from './database';
+import type { Database, Row, SqlValue } from './database';
 import { hydrate } from './hydrate';
-import type { TableContext } from './table-context';
-import type { EntityColumnMeta } from './entity';
+import { TableContext } from './table-context';
+import type { EntityColumnMeta, EntityRelationMeta } from './entity';
 
 const OPERATORS = ['=', '<>', '<', '>', '<=', '>=', 'LIKE', 'IN', 'IS NULL'] as const;
 
@@ -35,6 +35,8 @@ export class QueryBuilder<T extends object> {
   private readonly conditions: string[] = [];
   private readonly params: SqlValue[] = [];
   private readonly orderings: Ordering[] = [];
+  private readonly includes: EntityRelationMeta[] = [];
+  private readonly targetContexts = new Map<string, TableContext<object>>();
   private includeDeleted = false;
   private maxRows: number | undefined;
 
@@ -105,20 +107,40 @@ export class QueryBuilder<T extends object> {
     return this;
   }
 
+  /**
+   * Inclui a relação (whitelist do metadado): `@ManyToOne` vira `LEFT JOIN` com a coluna
+   * alienígena; `@OneToMany` vira uma segunda consulta pelos filhos (array vazio quando
+   * não há). Sem filhos, a propriedade vira `[]`; sem par no JOIN, `null`.
+   */
+  include(property: keyof T & string): this {
+    const relation = this.table.relationOf(property);
+    if (!this.includes.some((included) => included.property === relation.property)) {
+      this.includes.push(relation);
+    }
+    return this;
+  }
+
   /** Executa e devolve as instâncias hidratadas. */
   all(): T[] {
-    return this.database
+    const instances = this.database
       .all(this.selectSql(), this.params)
-      .map((row) => hydrate(this.table.entityClass, row));
+      .map((row) => this.hydrateRow(row));
+    this.fillOneToMany(instances);
+    return instances;
   }
 
   /** Executa e devolve a primeira linha (ou `undefined`). */
   first(): T | undefined {
     const row = this.database.get(this.selectSql(), this.params);
-    return row === undefined ? undefined : hydrate(this.table.entityClass, row);
+    if (row === undefined) {
+      return undefined;
+    }
+    const instance = this.hydrateRow(row);
+    this.fillOneToMany([instance]);
+    return instance;
   }
 
-  /** Conta as linhas com os filtros atuais (sem ordem/limit). */
+  /** Conta as linhas com os filtros atuais (sem ordem, limite ou `include`). */
   count(): number {
     const row = this.database.get(
       `SELECT COUNT(*) AS total FROM ${this.table.meta.table}${this.whereSql()}`,
@@ -128,7 +150,112 @@ export class QueryBuilder<T extends object> {
   }
 
   private selectSql(): string {
-    return `SELECT * FROM ${this.table.meta.table}${this.whereSql()}${this.orderSql()}${this.limitSql()}`;
+    const selects = [`${this.table.meta.table}.*`];
+    const joins: string[] = [];
+    for (const relation of this.includes) {
+      if (relation.kind !== 'many-to-one') {
+        continue;
+      }
+      const context = this.contextFor(relation);
+      const alias = `rel_${relation.property}`;
+      joins.push(
+        ` LEFT JOIN ${context.meta.table} AS ${alias} ON ${this.table.meta.table}.${relation.column} = ${alias}.${context.primaryKey.name}`,
+      );
+      for (const column of context.meta.columns) {
+        selects.push(`${alias}.${column.name} AS ${relation.property}__${column.name}`);
+      }
+    }
+    return `SELECT ${selects.join(', ')} FROM ${this.table.meta.table}${joins.join('')}${this.whereSql()}${this.orderSql()}${this.limitSql()}`;
+  }
+
+  /** Separa a linha principal das colunas prefixadas pelas relações e hidrata tudo. */
+  private hydrateRow(row: Row): T {
+    const prefixes = this.includes.map((relation) => `${relation.property}__`);
+    const mainRow: Row = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (!prefixes.some((prefix) => key.startsWith(prefix))) {
+        mainRow[key] = value;
+      }
+    }
+    const instance = hydrate(this.table.entityClass, mainRow);
+    for (const relation of this.includes) {
+      if (relation.kind !== 'many-to-one') {
+        continue;
+      }
+      const context = this.contextFor(relation);
+      const prefix = `${relation.property}__`;
+      const subRow: Row = {};
+      for (const [key, value] of Object.entries(row)) {
+        if (key.startsWith(prefix)) {
+          subRow[key.slice(prefix.length)] = value;
+        }
+      }
+      const empty = context.meta.columns.every(
+        (column) => subRow[column.name] === undefined || subRow[column.name] === null,
+      );
+      (instance as Record<string, unknown>)[relation.property] = empty
+        ? null
+        : hydrate(context.entityClass, subRow);
+    }
+    return instance;
+  }
+
+  /** Preenche os `@OneToMany` incluídos com uma segunda consulta (filhos por pai). */
+  private fillOneToMany(instances: T[]): void {
+    for (const relation of this.includes) {
+      if (relation.kind !== 'one-to-many') {
+        continue;
+      }
+      const context = this.contextFor(relation);
+      const inverse = context.meta.relations.find(
+        (candidate) => candidate.kind === 'many-to-one' && candidate.property === relation.inverse,
+      );
+      if (inverse === undefined || inverse.kind !== 'many-to-one') {
+        throw new Error(
+          `A relação "${relation.property}" precisa do lado @ManyToOne("${relation.inverse}") em "${context.entityClass.name}".`,
+        );
+      }
+      const pkProperty = this.table.primaryKey.property;
+      const ids = [
+        ...new Set(
+          instances
+            .map((instance) => (instance as Record<string, SqlValue>)[pkProperty])
+            .filter((id): id is SqlValue => id !== undefined && id !== null),
+        ),
+      ];
+      const grouped = new Map<SqlValue, object[]>();
+      if (ids.length > 0) {
+        const deletedFilter =
+          context.deletedColumn !== undefined && !this.includeDeleted
+            ? ` AND ${context.deletedColumn.name} IS NULL`
+            : '';
+        const rows = this.database.all(
+          `SELECT * FROM ${context.meta.table} WHERE ${inverse.column} IN (${ids
+            .map(() => '?')
+            .join(', ')})${deletedFilter} ORDER BY ${context.primaryKey.name}`,
+          ids,
+        );
+        for (const row of rows) {
+          const key = row[inverse.column];
+          const children = grouped.get(key) ?? [];
+          children.push(hydrate(context.entityClass, row));
+          grouped.set(key, children);
+        }
+      }
+      for (const instance of instances) {
+        const id = (instance as Record<string, SqlValue>)[pkProperty];
+        (instance as Record<string, unknown>)[relation.property] = grouped.get(id) ?? [];
+      }
+    }
+  }
+
+  private contextFor(relation: EntityRelationMeta): TableContext<object> {
+    let context = this.targetContexts.get(relation.property);
+    if (context === undefined) {
+      context = new TableContext(relation.target());
+      this.targetContexts.set(relation.property, context);
+    }
+    return context;
   }
 
   private whereSql(): string {

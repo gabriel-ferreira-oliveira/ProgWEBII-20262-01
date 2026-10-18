@@ -18,6 +18,7 @@ import {
 import type { MetadataTarget } from '../reflection/class-metadata';
 import { inferType } from '../reflection/infer-type';
 import type { InferredType } from '../reflection/infer-type';
+import type { EntityClass } from './hydrate';
 
 /** **Opções do decorator** `@Column`. */
 export interface ColumnOptions {
@@ -63,13 +64,22 @@ export interface EntityMeta {
   table: string;
   /** Colunas na ordem de declaração (base primeiro, depois as próprias). */
   columns: EntityColumnMeta[];
+  /** Relações na ordem de declaração; vazio quando a entidade não tem nenhuma. */
+  relations: EntityRelationMeta[];
 }
 
 const TABLE_KEY = 'orm:entity';
 const COLUMNS_KEY = 'orm:columns';
+const RELATIONS_KEY = 'orm:relations';
 
 /** Mapa propriedade → coluna resolvida (sem `property`, que é a própria chave). */
 type ColumnsByProperty = Record<PropertyKey, Omit<EntityColumnMeta, 'property'>>;
+
+/** Relação gravada sem `property` (que é a própria chave do mapa). */
+type StoredRelation =
+  | { kind: 'many-to-one'; column: string; target: RelationTarget }
+  | { kind: 'one-to-many'; inverse: string; target: RelationTarget };
+type RelationsByProperty = Record<PropertyKey, StoredRelation>;
 
 /** Nome de banco a partir da propriedade (`durationMin` → `duration_min`). */
 function toSnakeCase(name: string): string {
@@ -92,6 +102,20 @@ function resolveType(
   return type;
 }
 
+/** Alvo lazy de uma relação — o mesmo espírito do `() => X` do TypeORM. */
+export type RelationTarget = () => EntityClass;
+
+/** **Opções do decorator** `@ManyToOne`. */
+export interface ManyToOneOptions {
+  /** Coluna da chave estrangeira; por padrão o snake_case da propriedade + `_id`. */
+  column?: string;
+}
+
+/** Metadado resolvido de uma relação: `@ManyToOne` (dono da FK) ou `@OneToMany` (inverso). */
+export type EntityRelationMeta =
+  | { kind: 'many-to-one'; property: string; column: string; target: RelationTarget }
+  | { kind: 'one-to-many'; property: string; inverse: string; target: RelationTarget };
+
 /** Cópia do registro own (top-level) para escrita copy-on-write. */
 function ownSnapshot(target: MetadataTarget): ColumnsByProperty {
   return { ...(getOwnMetadata<ColumnsByProperty>(target, COLUMNS_KEY) ?? {}) };
@@ -106,6 +130,41 @@ function writeColumn(
   const columns = ownSnapshot(target);
   columns[property] = column;
   defineOwnMetadata(target, COLUMNS_KEY, columns);
+}
+
+/** Grava a relação resolvida no registro *own* do construtor (cópia defensiva). */
+function writeRelation(
+  target: MetadataTarget,
+  property: PropertyKey,
+  relation: StoredRelation,
+): void {
+  const relations = { ...(getOwnMetadata<RelationsByProperty>(target, RELATIONS_KEY) ?? {}) };
+  relations[property] = relation;
+  defineOwnMetadata(target, RELATIONS_KEY, relations);
+}
+
+/** Resolve e grava o lado dono da FK. Gravado por `@ManyToOne`. */
+export function declareManyToOne(
+  target: MetadataTarget,
+  property: PropertyKey,
+  relationTarget: RelationTarget,
+  options: ManyToOneOptions = {},
+): void {
+  writeRelation(target, property, {
+    kind: 'many-to-one',
+    column: options.column ?? `${toSnakeCase(String(property))}_id`,
+    target: relationTarget,
+  });
+}
+
+/** Resolve e grava o lado inverso (sem coluna própria). Gravado por `@OneToMany`. */
+export function declareOneToMany(
+  target: MetadataTarget,
+  property: PropertyKey,
+  relationTarget: RelationTarget,
+  inverse: string,
+): void {
+  writeRelation(target, property, { kind: 'one-to-many', inverse, target: relationTarget });
 }
 
 /** Grava o nome da tabela no registro *own* do construtor. Gravado por `@Entity`. */
@@ -175,7 +234,50 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
 }
 
 /**
- * Metadado da entidade: tabela (mesclada pela cadeia — a filha vence) + colunas mescladas,
+ * Marca o lado **dono** da relação: grava `{kind: 'many-to-one', column, target}` em
+ * `ceviu:orm:relations`. `column` é a FK no banco (padrão `snake_case(propriedade)_id`);
+ * `target` fica lazy (`() => X`) para permitir referência circular entre entidades.
+ */
+export function ManyToOne<T extends object>(
+  target: () => EntityClass<T>,
+  options: ManyToOneOptions = {},
+): PropertyDecorator {
+  return (decorated, propertyKey) => declareManyToOne(decorated, propertyKey, target, options);
+}
+
+/**
+ * Descobre a propriedade acessada pelo acessador do inverso — o acessador roda com um
+ * `Proxy` que grava o último `get` (como o TypeORM faz para o lado inverso).
+ */
+function inversePropertyOf<T extends object>(inverse: (target: T) => unknown): string {
+  let accessed: string | undefined;
+  const recorder = new Proxy({} as T, {
+    get(_target, property) {
+      accessed = String(property);
+      return recorder;
+    },
+  });
+  inverse(recorder);
+  if (accessed === undefined) {
+    throw new Error('@OneToMany precisa do acessador do lado inverso: (x) => x.campo.');
+  }
+  return accessed;
+}
+
+/**
+ * Marca o lado **inverso**: grava `{kind: 'one-to-many', inverse, target}` — sem coluna
+ * própria; o `inverse` aponta para a propriedade `@ManyToOne` do outro lado, dona da FK.
+ */
+export function OneToMany<T extends object>(
+  target: () => EntityClass<T>,
+  inverse: (target: T) => unknown,
+): PropertyDecorator {
+  return (decorated, propertyKey) =>
+    declareOneToMany(decorated, propertyKey, target, inversePropertyOf(inverse));
+}
+
+/**
+ * Metadado da entidade: tabela + colunas + relações, mescladas pela cadeia (a filha vence),
  * na ordem base → própria. Sem `@Entity` (ou sem colunas), devolve `undefined`.
  */
 export function getEntityMeta(target: MetadataTarget): EntityMeta | undefined {
@@ -184,9 +286,11 @@ export function getEntityMeta(target: MetadataTarget): EntityMeta | undefined {
   if (table === undefined || columns === undefined) {
     return undefined;
   }
+  const relations = getMergedMetadata<RelationsByProperty>(target, RELATIONS_KEY) ?? {};
   return {
     table,
     columns: Object.entries(columns).map(([property, column]) => ({ property, ...column })),
+    relations: Object.entries(relations).map(([property, relation]) => ({ property, ...relation })),
   };
 }
 
