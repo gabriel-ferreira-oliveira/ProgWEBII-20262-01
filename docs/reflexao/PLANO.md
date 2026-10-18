@@ -30,7 +30,9 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluída · `[!]` bloqu
 
 ### Fase 0: Preparação
 - [x] T0.1 Criar a branch. Confirmar os scripts reais no `package.json` (a auditoria cita `test`, `test:e2e`, `typecheck`, `typecheck:web`). Rodar a baseline completa e anotar falhas pré-existentes. Conferir 5 referências da auditoria por amostragem. Criar PLANO.md e HANDOFF.md. Pronto quando estiverem commitados com a baseline documentada.
-- [ ] T0.2 Inventário do TypeORM (somente leitura): métodos de `Repository`/`DataSource` realmente usados e onde (entities, migrations, data-source, legacy-migration, factories, specs e mocks), mais o grafo de dependência entre services e entidades. Saída em `docs/reflexao/INVENTARIO.md`.
+- [x] T0.2 Inventário do TypeORM (somente leitura): métodos de `Repository`/`DataSource` realmente usados e onde (entities, migrations, data-source, legacy-migration, factories, specs e mocks), mais o grafo de dependência entre services e entidades. Saída em `docs/reflexao/INVENTARIO.md`.
+
+> **Fase 0 verificada** em 2026-10-18: suíte completa verde ao fim da T0.2 (26 unit · 22 e2e · typecheck · typecheck:web · build · build:web).
 
 ### Fase 1: Núcleo de reflexão
 - [ ] T1.1 Helpers de metadado por classe: gravar *own*, ler com merge pela cadeia de protótipos (herança), isolamento entre classes. Testes.

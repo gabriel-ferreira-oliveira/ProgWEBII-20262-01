@@ -1,48 +1,51 @@
-# HANDOFF (atualizado em 2026-10-18)
+# HANDOFF (atualizado em 2026-10-18 12:35)
 
 ## Retomada em 30 segundos
-- Branch: `feat/reflexao` | Último commit: `T0.1: auditoria de reflexão, baseline e documentos de acompanhamento` (hash exato: `git log -1 --format=%h`; este arquivo foi commitado junto do próprio commit)
-- Árvore limpa? sim (após o commit da T0.1)
-- **Próxima ação exata:** T0.2 — Inventário do TypeORM (somente leitura). Primeiro passo: abrir `apps/api/src/database/` (`entities/`, `data-source.ts`, `data-source-options.ts`, `database.module.ts`, `migrations/`) e os 5 services que injetam repositórios, consolidar métodos de `Repository`/`DataSource` usados e o grafo service→entidade, e escrever `docs/reflexao/INVENTARIO.md`. Não alterar código.
+- Branch: `feat/reflexao` | Último commit: `T0.2: inventário do TypeORM (somente leitura)` (hash exato: `git log -1 --format=%h`)
+- Árvore limpa? sim (após o commit da T0.2)
+- **Próxima ação exata:** T1.1 — helpers de metadado por classe (gravar *own*, ler com merge pela cadeia de protótipos, isolamento entre classes). Primeiro passo: criar o teste primeiro em `apps/api/src/framework/reflection/` (spec com casos de herança/isolamento) e só então o helper; rodar `npm test`. Marcar `[~]` no PLANO antes de codar.
 
 ## Estado
-- Concluídas: **T0.1** — branch criada; scripts confirmados no `package.json`; baseline completa verde; `docs/auditoria-reflexao.md` gerada (a auditoria prévia não existia e o usuário autorizou gerá-la); `docs/reflexao/PLANO.md` e este HANDOFF criados.
+- Concluídas: **T0.1** (branch, baseline, `docs/auditoria-reflexao.md`, PLANO/HANDOFF) e **T0.2** (`docs/reflexao/INVENTARIO.md` — inventário do TypeORM somente leitura; nenhum código tocado; suíte completa revalidada → **Fase 0 verificada** no PLANO).
 - Em andamento: nenhuma.
 - Bloqueadas: nenhuma.
 
-## Verificação (última execução)
+## Verificação (última execução — 2026-10-18, fim da T0.2)
 | Comando | Resultado | Observação |
 |---|---|---|
-| `git status` (base) | limpo, `main` @ `f0583cc` | antes de criar a branch |
-| `npm test` | 26/26 passaram (5 suites) | baseline original (unit, mocks) |
-| `npm run test:e2e` | 22/22 passaram | ~27 s; SQLite temporário |
+| `git status` (pré-T0.2) | limpo, `feat/reflexao` @ `3dde161` | antes de qualquer edição |
+| `npm test` | 26/26 passaram (5 suites) | baseline da T0.1, revalidada ao fim da T0.2 |
+| `npm run test:e2e` | 22/22 passaram | ~2,8 s; SQLite temporário |
 | `npm run typecheck` | sem erros | tsc strict (src + test) |
 | `npm run typecheck:web` | sem erros | tsc strict do frontend |
-| `git status` (pós-testes) | limpo | os testes não sujam a árvore |
+| `npm run build` | sem erros | dist/ da API |
+| `npm run build:web` | ok (390,78 kB inicial) | `ng build`, 8,5 s |
+| `git status` (pós-testes) | limpo | testes/builds não sujam a árvore |
 
-**Nenhuma falha pré-existente.** Não rodados nesta tarefa: `npm run build`/`build:web` (não pedidos pela T0.1).
+**Nenhuma falha pré-existente.** Baseline original da T0.1: mesmos resultados (unit/e2e/typechecks); `build`/`build:web` não haviam sido rodados na T0.1 e ficaram verdes na T0.2.
 
 ## Mapa do que foi criado
-- `docs/auditoria-reflexao.md` → auditoria prévia (gerada na T0.1): reflexão existente hoje, famílias de decorators, duplicação mapeada às fases, resumo do uso do TypeORM, riscos, referências conferidas por amostragem.
-- `docs/reflexao/PLANO.md` → seções 2 e 5 literais do prompt + seção "Decisões" (append-only). Fonte da verdade.
+- `docs/reflexao/INVENTARIO.md` → T0.2: métodos de `Repository`/`DataSource` realmente usados (com `arquivo:linha`), decorators das entidades, mocks/specs/e2e, grafo service↔entidade, "não usados" e implicações para o mini-ORM (insumo da T5.8).
+- `docs/auditoria-reflexao.md` → T0.1: reflexão atual (zero `Reflect.*` manual), famílias de decorators, duplicação mapeada às fases, riscos.
+- `docs/reflexao/PLANO.md` → seções 2 e 5 literais do prompt + "Decisões" (append-only) + "Fase 0 verificada". Fonte da verdade.
 - `docs/reflexao/HANDOFF.md` → este arquivo (reescrito inteiro a cada tarefa).
 
 ## Armadilhas descobertas
-- **Não há uso direto de `Reflect.*`** no código; `reflect-metadata` é importado só em `data-source.ts:2` e `run-import.ts:1` (no app o polyfill vem do side-effect do `@nestjs/core`). O núcleo da Fase 1 será o primeiro uso manual.
-- `data-source-options.ts` tem `enableWAL: true` mas **não tem `busy_timeout`** (risco para a coexistência TypeORM + mini-ORM — registrar na T5.3).
-- **Lacunas de e2e:** `GET/PATCH/DELETE /series/:id`, `GET /users/:id/watched-series` (caso de sucesso) e busca por título retornando série não são cobertos; migrações de DTO de série contam só com specs unit + typecheck.
-- Front usa HTML nativo (**sem `mat-form-field`**) e nenhum formulário dirigido por metadados; regex `/^\d+$/` duplicada em 3 pontos (`register.component.ts:30`, `home.component.ts:91`, `search-results.component.ts:50`).
-- Repo **sem lint configurado** (proposta V-06 da Fase 5 segue aberta; não bloqueia).
-- `main` está no commit `f0583cc` ("port trabalho poo1"); não havia branch `feat/reflexao` — criada na T0.1.
-- `docs/` cai na regra `DOCS` do `.gitignore:11` (case-insensitive no Windows) e nunca foi versionado (`git ls-files docs` vazio; o próprio `.gitignore` é ignorado, linha 42). A T0.1 commitou os 3 arquivos com `git add -f`; **documento novo em `docs/reflexao/` precisa de `-f` na primeira vez** (depois de rastreado, o `git status` volta a mostrar edições normalmente).
+- `docs/` cai na regra `DOCS` do `.gitignore:11` (case-insensitive no Windows); documento **novo** em `docs/` exige `git add -f` na primeira vez (o `INVENTARIO.md` foi commitado assim); depois de rastreado, edições aparecem normalmente.
+- `JwtStrategy` **não** consulta repositório (`jwt.strategy.ts:17-19` devolve o payload direto) — o texto do `docs/HANDOFF.md` §12.3 descrevia um carregamento de usuário que não existe.
+- `created_at` não tem DEFAULT no DDL; quem preenche é o driver TypeORM (`@CreateDateColumn`) — o mini-ORM deve fazer o mesmo no insert. No schema só existem `integer` e `text` (datas como texto).
+- Sem `busy_timeout` em lugar nenhum (WAL ligado) — risco da coexistência TypeORM+mini-ORM fica para a T5.3.
+- Mini-ORM pode ignorar, até prova em contrário: relations loading, cascatas ORM, listeners, variantes `*By`, `update/delete/insert` diretos, agregados (INVENTARIO §10).
+- Lacunas de e2e seguem: `GET/PATCH/DELETE /series/:id`, `GET /users/:id/watched-series` (caso de sucesso) e busca por título retornando série.
+- Repo sem lint configurado (proposta V-06 segue aberta). Front usa HTML nativo sem `mat-form-field`; regex `/^\d+$/` duplicada em 3 pontos (`register.component.ts:30`, `home.component.ts:91`, `search-results.component.ts:50`).
 
 ## Perguntas abertas ao usuário
 - Nenhuma no momento. (A T3.5 fará a pergunta sobre idade no cadastro quando chegar.)
 
 ## Comandos úteis (confirmados no repo)
 ```bash
-# baseline (raiz do monorepo)
-npm test; npm run test:e2e; npm run typecheck; npm run typecheck:web
+# suíte completa (raiz do monorepo)
+npm test; npm run test:e2e; npm run typecheck; npm run typecheck:web; npm run build; npm run build:web
 
 # rodar a aplicação
 npm run dev          # API em http://localhost:3000/api (Swagger em /api/docs)
