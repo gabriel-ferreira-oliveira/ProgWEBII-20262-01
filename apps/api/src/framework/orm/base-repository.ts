@@ -17,7 +17,7 @@
 import type { Database, Row, SqlValue } from './database';
 import { dehydrate, hydrate } from './hydrate';
 import type { EntityClass } from './hydrate';
-import { requireEntityMeta } from './entity';
+import { requireEntityMeta, primaryKeyOf } from './entity';
 import type { EntityColumnMeta, EntityMeta } from './entity';
 
 /** Mapa de igualdades por propriedade; `null` vira `IS NULL`. */
@@ -46,8 +46,8 @@ export class BaseRepository<T extends object> {
   ) {
     this.meta = requireEntityMeta(entityClass);
     this.columnsByProperty = new Map(this.meta.columns.map((column) => [column.property, column]));
-    const primaryKey = this.meta.columns.find((column) => column.primaryKey);
-    if (!primaryKey) {
+    const primaryKey = primaryKeyOf(this.meta);
+    if (primaryKey === undefined) {
       throw new Error(`A entidade "${entityClass.name}" não tem @PrimaryKey.`);
     }
     this.primaryKey = primaryKey;

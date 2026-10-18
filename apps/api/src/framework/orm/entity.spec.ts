@@ -40,6 +40,15 @@ class Herdada extends Base {
   title!: string;
 }
 
+@Entity('contadores')
+class Contadores {
+  @PrimaryKey()
+  id!: number;
+
+  @Column({ default: 0 })
+  total!: number;
+}
+
 describe('metadados de entidade do mini-ORM (T5.1)', () => {
   it('compõe EntityMeta com a tabela e as colunas na ordem de declaração', () => {
     const meta = getEntityMeta(Movie);
@@ -102,6 +111,13 @@ describe('metadados de entidade do mini-ORM (T5.1)', () => {
       }
       void Invalida;
     }).toThrow(/genre.*precisa de type/);
+  });
+
+  it('@Column com default grava o valor no metadado (e sem default não grava)', () => {
+    const contadores = getEntityMeta(Contadores);
+
+    expect(contadores?.columns[1].default).toBe(0);
+    expect(getEntityMeta(Movie)?.columns[1].default).toBeUndefined();
   });
 
   it('sem @Entity não há EntityMeta', () => {

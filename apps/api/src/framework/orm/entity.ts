@@ -29,6 +29,8 @@ export interface ColumnOptions {
   nullable?: boolean;
   /** Constraint UNIQUE; padrão `false`. */
   unique?: boolean;
+  /** Valor default do DDL (`DEFAULT <valor>`), para colunas NOT NULL com default no schema real. */
+  default?: string | number;
 }
 
 /** **Opções do decorator** `@PrimaryKey` — chave primária nunca é nula nem única por si. */
@@ -52,6 +54,8 @@ export interface EntityColumnMeta {
   unique: boolean;
   primaryKey: boolean;
   autoIncrement: boolean;
+  /** Valor default do DDL; ausente quando não há `DEFAULT`. */
+  default?: string | number;
 }
 
 /** Metadado de uma entidade (lido de `getEntityMeta`). */
@@ -115,14 +119,18 @@ export function declareColumn(
   property: PropertyKey,
   options: ColumnOptions = {},
 ): void {
-  writeColumn(target, property, {
+  const column: Omit<EntityColumnMeta, 'property'> = {
     name: options.name ?? toSnakeCase(String(property)),
     type: resolveType(target, property, options.type),
     nullable: options.nullable ?? false,
     unique: options.unique ?? false,
     primaryKey: false,
     autoIncrement: false,
-  });
+  };
+  if (options.default !== undefined) {
+    column.default = options.default;
+  }
+  writeColumn(target, property, column);
 }
 
 /** Resolve e grava a chave primária. Gravado por `@PrimaryKey`. */
@@ -193,4 +201,9 @@ export function requireEntityMeta(target: MetadataTarget): EntityMeta {
     throw new Error(`A classe "${name}" não tem metadados de entidade (@Entity e @Column).`);
   }
   return meta;
+}
+
+/** Chave primária do metadado (ou `undefined` quando a entidade não tem `@PrimaryKey`). */
+export function primaryKeyOf(meta: EntityMeta): EntityColumnMeta | undefined {
+  return meta.columns.find((column) => column.primaryKey);
 }
