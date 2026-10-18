@@ -71,14 +71,14 @@ describe('CeViu API (e2e)', () => {
   it('rejeita email duplicado (case-insensitive) com 409', async () => {
     await request(httpServer)
       .post('/api/auth/register')
-      .send({ name: 'Outro', email: 'GABRIEL@EXEMPLO.COM', password: '999' })
+      .send({ name: 'Outro', email: 'GABRIEL@EXEMPLO.COM', password: '999', age: 20 })
       .expect(409);
   });
 
   it('rejeita campo desconhecido no cadastro com 400', async () => {
     await request(httpServer)
       .post('/api/auth/register')
-      .send({ name: 'X', email: 'x@x.com', password: '1', country: 'Uganda' })
+      .send({ name: 'X', email: 'x@x.com', password: '1', age: 20, country: 'Uganda' })
       .expect(400);
   });
 
@@ -266,7 +266,7 @@ describe('CeViu API (e2e)', () => {
   it('lista a comunidade excluindo o usuario logado', async () => {
     await request(httpServer)
       .post('/api/auth/register')
-      .send({ name: 'Maria', email: 'maria@exemplo.com', password: '12345' })
+      .send({ name: 'Maria', email: 'maria@exemplo.com', password: '12345', age: 30 })
       .expect(201);
 
     const response = await request(httpServer)
@@ -326,7 +326,7 @@ describe('CeViu API (e2e)', () => {
       expect(metadata.fields.map((field) => [field.label, field.control, field.required])).toEqual([
         ['Nome', 'text', true],
         ['Email', 'text', true],
-        ['Idade', 'number', false],
+        ['Idade', 'number', true],
         ['Senha', 'password', true],
         ['Sobre', 'textarea', false],
       ]);
@@ -335,7 +335,7 @@ describe('CeViu API (e2e)', () => {
         label: 'Idade',
         control: 'number',
         order: 3,
-        required: false,
+        required: true,
         min: 0,
       });
     });

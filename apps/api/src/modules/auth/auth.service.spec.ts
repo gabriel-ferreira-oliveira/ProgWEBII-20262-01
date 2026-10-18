@@ -79,7 +79,7 @@ describe('AuthService', () => {
     queryBuilder.getOne.mockResolvedValue(makeUser({ email: 'GSB@GMAIL.COM' }));
 
     await expect(
-      service.register({ name: 'X', email: 'gsb@gmail.com', password: '1' }),
+      service.register({ name: 'X', email: 'gsb@gmail.com', password: '1', age: 21 }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 

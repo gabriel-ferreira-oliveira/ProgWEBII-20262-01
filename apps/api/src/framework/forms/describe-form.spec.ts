@@ -150,7 +150,7 @@ describe('framework/forms/describe-form (T3.2)', () => {
       expect(campos).toEqual([
         ['name', 'Nome', 'text', true],
         ['email', 'Email', 'text', true],
-        ['age', 'Idade', 'number', false],
+        ['age', 'Idade', 'number', true],
         ['password', 'Senha', 'password', true],
         ['bio', 'Sobre', 'textarea', false],
       ]);

@@ -21,12 +21,11 @@ export class RegisterDto {
   @IsNotEmpty()
   password!: string;
 
-  @ApiPropertyOptional({ example: 21, minimum: 0, nullable: true })
+  @ApiProperty({ example: 21, minimum: 0 })
   @Field({ label: 'Idade', control: 'number', order: 3 })
-  @IsOptional()
   @IsInt()
   @Min(0)
-  age?: number;
+  age!: number;
 
   @ApiPropertyOptional({ example: 'Gosto de filmes de acao.', nullable: true })
   @Field({ label: 'Sobre', control: 'textarea', order: 5 })

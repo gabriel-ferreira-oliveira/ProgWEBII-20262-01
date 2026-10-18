@@ -91,14 +91,14 @@ export interface LoginRequestDto {
 
 /**
  * Corpo de `POST /auth/register`.
- * Paridade com o legado: `bio` e `age` sao opcionais no contrato do backend,
- * mas a tela de cadastro do legado exige idade (Integer.parseInt).
+ * Paridade com o legado: a tela exige idade (Integer.parseInt) e o backend tambem (T3.5);
+ * `bio` continua opcional.
  */
 export interface RegisterRequestDto {
   readonly name: string;
   readonly email: string;
   readonly password: string;
-  readonly age?: number;
+  readonly age: number;
   readonly bio?: string;
 }
 
