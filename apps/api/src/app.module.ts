@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { appConfig } from './config/configuration';
 import { validateEnvironment } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
+import { MiniOrmModule } from './framework/orm/mini-orm.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MetadataModule } from './modules/metadata/metadata.module';
 import { MoviesModule } from './modules/movies/movies.module';
@@ -18,6 +19,7 @@ import { UsersModule } from './modules/users/users.module';
       validate: validateEnvironment,
     }),
     DatabaseModule,
+    MiniOrmModule,
     AuthModule,
     UsersModule,
     MoviesModule,
