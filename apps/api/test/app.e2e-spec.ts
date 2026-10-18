@@ -7,6 +7,7 @@ import type { Response } from 'supertest';
 import type { Repository } from 'typeorm';
 import type {
   FavoriteEntryDto,
+  FormMetadata,
   LoginResponseDto,
   MovieDto,
   SearchResultDto,
@@ -307,5 +308,72 @@ describe('CeViu API (e2e)', () => {
       .get('/api/users/999')
       .set('Authorization', `Bearer ${token}`)
       .expect(404);
+  });
+
+  describe('GET /api/metadata/:form (publico, sem token)', () => {
+    it('descreve o cadastro: ordem da tela, labels, controles e restricoes reais', async () => {
+      const response = await request(httpServer).get('/api/metadata/register').expect(200);
+
+      const metadata = readJson<FormMetadata>(response);
+      expect(metadata.rules).toEqual([]);
+      expect(metadata.fields.map((field) => field.name)).toEqual([
+        'name',
+        'email',
+        'age',
+        'password',
+        'bio',
+      ]);
+      expect(metadata.fields.map((field) => [field.label, field.control, field.required])).toEqual([
+        ['Nome', 'text', true],
+        ['Email', 'text', true],
+        ['Idade', 'number', false],
+        ['Senha', 'password', true],
+        ['Sobre', 'textarea', false],
+      ]);
+      expect(metadata.fields[2]).toEqual({
+        name: 'age',
+        label: 'Idade',
+        control: 'number',
+        order: 3,
+        required: false,
+        min: 0,
+      });
+    });
+
+    it('descreve o login e as sinopses', async () => {
+      const login = readJson<FormMetadata>(await request(httpServer).get('/api/metadata/login').expect(200));
+      expect(login.fields.map((field) => field.name)).toEqual(['email', 'password']);
+      expect(login.fields.map((field) => field.control)).toEqual(['text', 'password']);
+
+      const movie = readJson<FormMetadata>(
+        await request(httpServer).get('/api/metadata/movie-synopsis').expect(200),
+      );
+      const series = readJson<FormMetadata>(
+        await request(httpServer).get('/api/metadata/series-synopsis').expect(200),
+      );
+      expect(movie.fields).toEqual([
+        { name: 'synopsis', label: 'Sinopse', control: 'textarea', order: 1, required: true },
+      ]);
+      expect(series.fields).toEqual(movie.fields);
+    });
+
+    it('descreve a busca: sem campos de UI e com a regra exactlyOneOf do legado', async () => {
+      const response = await request(httpServer).get('/api/metadata/search-catalog').expect(200);
+
+      const metadata = readJson<FormMetadata>(response);
+      expect(metadata.fields).toEqual([]);
+      expect(metadata.rules).toEqual([
+        {
+          kind: 'exactlyOneOf',
+          properties: ['title', 'id'],
+          missingMessage: 'Campos de pesquisa vazio',
+          multipleMessage: 'Apenas um campo pode ser prenchido para a pesquisa',
+        },
+      ]);
+    });
+
+    it('devolve 404 para formulario desconhecido', async () => {
+      await request(httpServer).get('/api/metadata/nao-existe').expect(404);
+    });
   });
 });
