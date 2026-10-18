@@ -1,45 +1,46 @@
-# HANDOFF (atualizado em 2026-10-18 13:07)
+# HANDOFF (atualizado em 2026-10-18 13:42)
 
 ## Retomada em 30 segundos
-- Branch: `feat/reflexao` | Último commit: `T2.1: decorators de validacao gravando no registro` (hash exato: `git log -1 --format=%h`)
-- Árvore limpa? sim (após o commit da T2.1)
-- **Próxima ação exata:** **T2.2** (aguarda pedido do usuário — regra 1) — motor `validate(Class, plain)` com erros estruturados: conversão plain→instância via `inferType` (ex.: "5" → 5 em query string) e whitelist (propriedade sem decorator é rejeitada, replicando `whitelist/forbidNonWhitelisted` do pipe legado em `setup-app.ts:9-13`). Consumir `getValidationRules` de `validation-registry.ts`. Marcar `[~]`/Em andamento; spec primeiro em `apps/api/src/framework/validation/validate.spec.ts`; depois `validate.ts`; `npm test` + `npm run typecheck`; commit `T2.2: ...`.
+- Branch: `feat/reflexao` | Último commit: `T2.2: motor de validacao proprio (Fase 2)` (hash exato: `git log -1 --format=%h`)
+- Árvore limpa? sim (após o commit da T2.2)
+- **Próxima ação exata:** **T2.3** (aguarda pedido do usuário — regra 1) — `@ExactlyOneOf([...], message)` como **regra de classe** (não por propriedade): armazenamento próprio no registro, execução pelo motor `validate` e legível como metadado. Paridade: o e2e espera a mensagem "Campos de pesquisa vazio" (linha 132) que hoje o `search.service` lança manualmente; a T2.7 remove a checagem manual. Marcar `[~]`/Em andamento; spec primeiro em `apps/api/src/framework/validation/`; `npm test` + `npm run typecheck`; commit `T2.3: ...`.
 
 ## Estado
-- Concluídas: **T0.1**, **T0.2**, **T1.1**, **T1.2** (Fase 1 verificada) e **T2.1** (8 decorators de validação; 8 testes).
+- Concluídas: **T0.1**, **T0.2**, **T1.1**, **T1.2** (Fase 1 verificada), **T2.1** (decorators) e **T2.2** (motor `validate`; 15 testes).
 - Em andamento: nenhuma.
 - Bloqueadas: nenhuma.
 
-## Verificação (última execução — 2026-10-18, fim da T2.1)
+## Verificação (última execução — 2026-10-18, fim da T2.2)
 | Comando | Resultado | Observação |
 |---|---|---|
-| `git status` (pré-T2.1) | limpo, `feat/reflexao` @ `9bb8339` | antes de qualquer edição |
-| `npm test` (baseline T2.1) | 56/56 passaram (7 suites) | pré-implementação |
-| `npx jest framework/validation` (spec primeiro) | falhou (TS2307 módulos ausentes + TS2612/TS4114 no spec) | vermelho intencional do TDD; corrigido o spec antes de implementar |
-| `npx jest framework/validation` (pós-impl) | 8/8 passaram | `decorators.spec.ts` |
-| `npm test` (final) | 64/64 passaram (8 suites) | 56 antigos + 8 novos, sem regressão |
+| `git status` (pré-T2.2) | limpo, `feat/reflexao` @ `a5eff8b` | antes de qualquer edição |
+| `npm test` (baseline T2.2) | 64/64 passaram (8 suites) | pré-implementação |
+| `npx jest validate` (spec primeiro) | falhou (TS2307: módulo ausente) | vermelho intencional do TDD |
+| `npx jest validate` (1ª rodada pós-impl) | 14/15 — falha de expectativa no spec | `'abc'` viola `min` **e** `isInt` (class-validator reporta todos); expectativa corrigida |
+| `npx jest validate` (final) | 15/15 passaram | `validate.spec.ts` |
+| `npm test` (final) | 79/79 passaram (9 suites) | 64 antigos + 15 novos, sem regressão |
 | `npm run typecheck` | sem erros | tsc strict (src + test) |
 | `npm run typecheck:web` | sem erros | tsc strict do frontend |
 
-**Não verificado:** e2e/build/build:web não rerodados — T2.1 só cria módulo novo (circuito de validação ainda não está ligado a DTO/rota; migração é T2.5+). Regra 3e não os exige aqui.
+**Não verificado:** e2e/build/build:web não rerodados — o motor ainda não está ligado a nenhuma rota (pipe composto é T2.4; migração de DTOs é T2.5+).
 
 ## Mapa do que foi criado
-- `apps/api/src/framework/validation/validation-registry.ts` → T2.1: registro por classe sob `ceviu:validation:rules` (`Record<propriedade, ValidationRule[]>`); `declareRule` (grava *own*, copy-on-write), `getOwnValidationRules` e `getValidationRules` (mesclada; entrada da filha substitui a da base). Consumido por T2.2 (motor) e T3.2 (`describeForm`).
-- `apps/api/src/framework/validation/decorators.ts` → T2.1: `@IsString @IsNotEmpty @IsOptional @IsInt @Min @MaxLength @Matches`, que só gravam no registro; assinaturas espelham class-validator (migração T2.5+ troca só o import). (+ `decorators.spec.ts` — 8 testes, inclui ordem bottom-up e herança.)
-- `apps/api/src/framework/reflection/class-metadata.ts` → T1.1: grava metadado *own* no construtor sob `ceviu:<key>`; leitura mesclada raiz→alvo (registros spread, arrays concat, clone). Consumido por F2/F3/F5. (+ `class-metadata.spec.ts` — 14 testes.)
-- `apps/api/src/framework/reflection/infer-type.ts` → T1.2: `design:type` → String/Number/Boolean/Date; qualquer outro metadado devolve o `override`. (+ `infer-type.spec.ts` — 16 testes; + fixture em `src/testing/`.)
-- `docs/reflexao/INVENTARIO.md` → T0.2: inventário do TypeORM usado (insumo da T5.8). `docs/auditoria-reflexao.md` → T0.1: auditoria de reflexão.
-- `docs/reflexao/PLANO.md` → fonte da verdade (seções 2 e 5 + Decisões append-only + "Fase 0/1 verificadas"). `docs/reflexao/HANDOFF.md` → este arquivo.
+- `apps/api/src/framework/validation/validate.ts` → T2.2: motor `validate(Class, plain)` → `{ value, errors }`; `ValidationIssue = {property, kind, message}`; conversão só Number (string numérica com trim); whitelist `property X should not exist`; mensagens padrão class-validator. Consumido pela T2.4 (pipe) e specs. (+ `validate.spec.ts` — 15 testes.)
+- `apps/api/src/framework/validation/validation-registry.ts` → T2.1: registro `ceviu:validation:rules` + `declareRule`/`getOwnValidationRules`/`getValidationRules`.
+- `apps/api/src/framework/validation/decorators.ts` → T2.1: 7 decorators que só gravam regras (+ `decorators.spec.ts` — 8 testes).
+- `apps/api/src/framework/reflection/class-metadata.ts` → T1.1 (14 testes); `infer-type.ts` → T1.2 (16 testes; fixture em `src/testing/`).
+- `docs/reflexao/INVENTARIO.md` (T0.2), `docs/auditoria-reflexao.md` (T0.1), `PLANO.md` (fonte da verdade), `HANDOFF.md` (este arquivo).
 
 ## Armadilhas descobertas
-- **Ordem dos property decorators legados é bottom-up** (caracterizado na T2.1): `@IsString() @IsNotEmpty()` grava `[isNotEmpty, isString]`. O motor (T2.2) não pode depender de ordem para lógica de skip/optional.
-- **`noImplicitOverride` ligado:** propriedade redeclarada em subclasse exige `override` (TS4114); se não for sobrescrever de verdade, TS2612 pede inicializador.
-- DTOs legados (5) **não usam mensagens customizadas** em nenhum decorator — as mensagens default do motor podem ser definidas livremente na T2.2 (paridade HTTP fica na T2.4).
-- Pipe global legado: `setup-app.ts:9-13` → `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`; filtro global de exceções em `common/filters/http-exception.filter.ts`.
-- **`emitDecoratorMetadata` (caracterizado na T1.2):** uniões e `| null`/`| undefined` explícitos → `Object`; opcional `?: number` preserva o tipo; `string[]` → `Array`; classe via `import type` → `Function`; sem decorator → metadado ausente. Use `inferType(..., override)` quando o tipo importa.
-- `docs/` exige `git add -f` para documento NOVO; "Decisões" do PLANO é append-only (anexar no fim); `git add` misto pode sair non-zero mas deixar tudo staged — conferir `git status`.
-- `JwtStrategy` não consulta repositório (`jwt.strategy.ts:17-19`); `created_at` sem DEFAULT no DDL (preenchido pelo driver); sem `busy_timeout` (risco fica para a T5.3).
-- Mini-ORM pode ignorar, até prova em contrário: relations loading, cascatas, listeners, `*By`, agregados (INVENTARIO §10).
+- **Sem cascata na validação (caracterizado na T2.2):** todas as regras de uma propriedade são avaliadas; `'abc'` viola `min` **e** `isInt` (mesmo comportamento do class-validator). Specs devem esperar a lista completa de erros.
+- **`min`/`maxLength`/`matches` falham também para tipo errado** (`typeof` check): `min` em string falha, igual class-validator.
+- **Conversão Number:** `Number('')` → 0 e `Number('1e3')` → 1000 são armadilhas; o motor usa regex `^-?\d+(\.\d+)?$` sobre o valor com `trim` (paridade com `@Type(() => Number)`).
+- Ordem dos property decorators legados é **bottom-up**: `@IsString() @IsNotEmpty()` grava `[isNotEmpty, isString]` (ordem visível nos erros).
+- `noImplicitOverride`: propriedade redeclarada em subclasse exige `override` (TS4114) ou inicializador (TS2612).
+- **`emitDecoratorMetadata` (T1.2):** uniões e `| null` explícitos → `Object`; `?: number` preserva `Number`; `string[]` → `Array`; `import type` → `Function`; sem decorator → ausente. Use `inferType(..., override)`.
+- DTOs legados não usam mensagens customizadas; pipe legado em `setup-app.ts:9-13` (`whitelist`/`forbidNonWhitelisted`/`transform`); filtro global em `common/filters/http-exception.filter.ts`.
+- `docs/` exige `git add -f` para documento NOVO; "Decisões" do PLANO é append-only; `git add` misto pode sair non-zero mas deixar staged — conferir `git status`.
+- `JwtStrategy` não consulta repositório (`jwt.strategy.ts:17-19`); `created_at` sem DEFAULT no DDL; sem `busy_timeout` (risco fica para a T5.3).
 - Lacunas de e2e seguem: `GET/PATCH/DELETE /series/:id`, `GET /users/:id/watched-series` (sucesso) e busca por título retornando série.
 - Repo sem lint; regex `/^\d+$/` duplicada em `register.component.ts:30`, `home.component.ts:91`, `search-results.component.ts:50` (T3.9 remove).
 
