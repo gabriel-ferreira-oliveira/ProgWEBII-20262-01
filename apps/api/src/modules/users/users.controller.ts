@@ -1,19 +1,17 @@
-import { Controller, Get, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import type {
   FavoriteEntryDto,
   UserDetailDto,
   UserSummaryDto,
   WatchedEntryDto,
 } from '@ceviu/shared';
+import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { UsersService } from './users.service';
 
-@ApiTags('users')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@Authenticated('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

@@ -1,13 +1,11 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import type { SearchResultDto } from '@ceviu/shared';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { SearchQueryDto } from './dto/search-query.dto';
 import { SearchService } from './search.service';
 
-@ApiTags('search')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@Authenticated('search')
 @Controller('search')
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}

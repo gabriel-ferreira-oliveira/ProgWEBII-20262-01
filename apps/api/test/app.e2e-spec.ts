@@ -53,6 +53,9 @@ describe('CeViu API (e2e)', () => {
 
   it('bloqueia rotas protegidas sem token', async () => {
     await request(httpServer).get('/api/movies').expect(401);
+    await request(httpServer).get('/api/series').expect(401);
+    await request(httpServer).get('/api/users').expect(401);
+    await request(httpServer).get('/api/search').expect(401);
   });
 
   it('cadastra usuario com pais fixo Brasil', async () => {

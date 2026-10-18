@@ -9,19 +9,16 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import type { SeriesDto, SeriesWatchResultDto } from '@ceviu/shared';
+import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { UpdateSeriesDto } from './dto/update-series.dto';
 import { SeriesService } from './series.service';
 
-@ApiTags('series')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@Authenticated('series')
 @Controller('series')
 export class SeriesController {
   constructor(private readonly seriesService: SeriesService) {}
