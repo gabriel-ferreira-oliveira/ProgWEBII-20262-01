@@ -10,23 +10,12 @@
  * - Sem metadados de entidade (@Entity e @Column), falha em vez de gravar/ler incerto.
  * - Lido por: `BaseRepository` (T5.4) para devolver instâncias e montar linhas de INSERT/UPDATE.
  */
-import { getEntityMeta } from './entity';
-import type { EntityMeta } from './entity';
+import { requireEntityMeta } from './entity';
 import type { Row } from './database';
 import type { InferredType } from '../reflection/infer-type';
 
 /** Construtor de entidade (sem argumentos, como as classes decoradas). */
 export type EntityClass<T extends object = object> = new () => T;
-
-function requireMeta(entityClass: EntityClass): EntityMeta {
-  const meta = getEntityMeta(entityClass);
-  if (!meta) {
-    throw new Error(
-      `A classe "${entityClass.name}" não tem metadados de entidade (@Entity e @Column).`,
-    );
-  }
-  return meta;
-}
 
 /** Valor do banco → valor da propriedade, conforme o tipo da coluna. */
 function toProperty(value: unknown, type: InferredType): unknown {
@@ -61,7 +50,7 @@ function toRowValue(value: unknown, type: InferredType): string | number | null 
  * Só as colunas presentes na linha são preenchidas; o resto fica `undefined`.
  */
 export function hydrate<T extends object>(entityClass: EntityClass<T>, row: Row): T {
-  const meta = requireMeta(entityClass);
+  const meta = requireEntityMeta(entityClass);
   const instance = new entityClass();
   const target = instance as Record<string, unknown>;
   for (const column of meta.columns) {
@@ -77,7 +66,7 @@ export function hydrate<T extends object>(entityClass: EntityClass<T>, row: Row)
  * patch parcial: propriedade `undefined` é omitida; `null` grava NULL.
  */
 export function dehydrate(entityClass: EntityClass, instance: object): Row {
-  const meta = requireMeta(entityClass);
+  const meta = requireEntityMeta(entityClass);
   const source = instance as Record<string, unknown>;
   const row: Row = {};
   for (const column of meta.columns) {

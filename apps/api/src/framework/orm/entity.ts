@@ -181,3 +181,16 @@ export function getEntityMeta(target: MetadataTarget): EntityMeta | undefined {
     columns: Object.entries(columns).map(([property, column]) => ({ property, ...column })),
   };
 }
+
+/**
+ * Igual a `getEntityMeta`, mas falha apontando a classe quando não há metadados —
+ * usado por `hydrate`/`dehydrate` (T5.2) e pelo `BaseRepository` (T5.4).
+ */
+export function requireEntityMeta(target: MetadataTarget): EntityMeta {
+  const meta = getEntityMeta(target);
+  if (meta === undefined) {
+    const name = typeof target === 'function' ? target.name : target.constructor.name;
+    throw new Error(`A classe "${name}" não tem metadados de entidade (@Entity e @Column).`);
+  }
+  return meta;
+}
