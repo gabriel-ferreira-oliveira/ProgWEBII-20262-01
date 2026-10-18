@@ -9,19 +9,16 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import type { MovieDto, MovieWatchResultDto } from '@ceviu/shared';
+import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { MoviesService } from './movies.service';
 
-@ApiTags('movies')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@Authenticated('movies')
 @Controller('movies')
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
