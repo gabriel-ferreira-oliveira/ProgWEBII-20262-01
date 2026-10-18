@@ -2,11 +2,10 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../database/entities/user.entity';
 import { makeUser } from '../../testing/factories';
-import { createRepositoryMock } from '../../testing/repository-mock';
+import { createBaseRepositoryMock } from '../../testing/repository-mock';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -15,9 +14,9 @@ describe('AuthService', () => {
   const queryBuilder = {
     withDeleted: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
-    getOne: jest.fn(),
+    first: jest.fn(),
   };
-  const usersRepository = createRepositoryMock<User>('createQueryBuilder', 'findOne', 'create', 'save');
+  const usersRepository = createBaseRepositoryMock<User>('query', 'insert');
   const jwtService = {
     sign: jest.fn().mockReturnValue('token-de-teste'),
   };
@@ -29,12 +28,16 @@ describe('AuthService', () => {
     jest.clearAllMocks();
     queryBuilder.withDeleted.mockReturnThis();
     queryBuilder.where.mockReturnThis();
-    usersRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+    usersRepository.query.mockReturnValue(queryBuilder);
+    usersRepository.insert.mockImplementation((user: User) => {
+      user.id = 5;
+      return user;
+    });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: getRepositoryToken(User), useValue: usersRepository },
+        { provide: User, useValue: usersRepository },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
       ],
@@ -43,11 +46,7 @@ describe('AuthService', () => {
   });
 
   it('registra com sucesso: pais fixo Brasil e senha com bcrypt', async () => {
-    queryBuilder.getOne.mockResolvedValue(null);
-    usersRepository.create.mockImplementation((input) => input);
-    usersRepository.save.mockResolvedValue(
-      makeUser({ id: 5, name: 'Novo', email: 'novo@exemplo.com', age: 30, bio: 'Oi' }),
-    );
+    queryBuilder.first.mockReturnValue(undefined);
 
     const result = await service.register({
       name: 'Novo',
@@ -66,13 +65,13 @@ describe('AuthService', () => {
       bio: 'Oi',
     });
 
-    const createArg = usersRepository.create.mock.calls[0][0] as { passwordHash: string };
-    expect(createArg.passwordHash).not.toBe('12345');
-    await expect(bcrypt.compare('12345', createArg.passwordHash)).resolves.toBe(true);
+    const insertArg = usersRepository.insert.mock.calls[0][0] as User;
+    expect(insertArg.passwordHash).not.toBe('12345');
+    await expect(bcrypt.compare('12345', insertArg.passwordHash)).resolves.toBe(true);
   });
 
   it('rejeita email ja cadastrado (case-insensitive) com 409', async () => {
-    queryBuilder.getOne.mockResolvedValue(makeUser({ email: 'GSB@GMAIL.COM' }));
+    queryBuilder.first.mockReturnValue(makeUser({ email: 'GSB@GMAIL.COM' }));
 
     await expect(
       service.register({ name: 'X', email: 'gsb@gmail.com', password: '1', age: 21 }),
@@ -80,7 +79,7 @@ describe('AuthService', () => {
   });
 
   it('rejeita login de email inexistente com a mensagem do legado', async () => {
-    usersRepository.findOne.mockResolvedValue(null);
+    queryBuilder.first.mockReturnValue(undefined);
 
     await expect(service.login({ email: 'ninguem@x.com', password: '1' })).rejects.toThrow(
       new UnauthorizedException('Email ou senha inválidos!'),
@@ -89,7 +88,7 @@ describe('AuthService', () => {
 
   it('rejeita senha incorreta com a mensagem do legado', async () => {
     const passwordHash = await bcrypt.hash('12345', 4);
-    usersRepository.findOne.mockResolvedValue(makeUser({ passwordHash }));
+    queryBuilder.first.mockReturnValue(makeUser({ passwordHash }));
 
     await expect(service.login({ email: 'gsb@gmail.com', password: 'errada' })).rejects.toThrow(
       new UnauthorizedException('Email ou senha inválidos!'),
@@ -98,7 +97,7 @@ describe('AuthService', () => {
 
   it('login com sucesso devolve token e perfil', async () => {
     const passwordHash = await bcrypt.hash('12345', 4);
-    usersRepository.findOne.mockResolvedValue(makeUser({ id: 9, passwordHash }));
+    queryBuilder.first.mockReturnValue(makeUser({ id: 9, passwordHash }));
 
     const result = await service.login({ email: 'gsb@gmail.com', password: '12345' });
 
