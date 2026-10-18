@@ -1,0 +1,59 @@
+@if (resultados.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+} @else if (resultados.error()) {
+  <p class="erro-carregamento">
+    Falha ao carregar os resultados.
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="resultados.reload()">
+      Tentar novamente
+    </button>
+  </p>
+} @else if (resultados.value(); as resultado) {
+  <h1 class="titulo-pagina resultados__titulo">
+    Resultados da Pesquisa ({{ resultado.movies.length }} filmes,
+    {{ resultado.series.length }} séries)
+  </h1>
+
+  @if (resultado.movies.length > 0) {
+    <section class="secao">
+      <h2 class="titulo-secao">Filmes ({{ resultado.movies.length }})</h2>
+      <div class="resultados__grade">
+        @for (filme of resultado.movies; track filme.id) {
+          <app-media-card
+            [imagePath]="caminhoFilme(filme.id)"
+            [imageWidth]="180"
+            [imageHeight]="240"
+            [title]="filme.title"
+            [lines]="linhaFilme(filme)"
+            actionLabel="Ver Detalhes"
+            (select)="abrirFilme(filme)"
+          />
+        }
+      </div>
+    </section>
+  }
+
+  @if (resultado.series.length > 0) {
+    <section class="secao">
+      <h2 class="titulo-secao">Séries ({{ resultado.series.length }})</h2>
+      <div class="resultados__grade">
+        @for (serie of resultado.series; track serie.id) {
+          <app-media-card
+            [imagePath]="caminhoSerie(serie.id)"
+            [imageWidth]="180"
+            [imageHeight]="240"
+            [title]="serie.title"
+            [lines]="linhaSerie(serie)"
+            actionLabel="Ver Detalhes"
+            (select)="abrirSerie(serie)"
+          />
+        }
+      </div>
+    </section>
+  }
+
+  @if (vazio()) {
+    <p class="resultados__vazio">{{ mensagemVazio }}</p>
+  }
+} @else {
+  <p class="resultados__vazio">{{ mensagemVazio }}</p>
+}

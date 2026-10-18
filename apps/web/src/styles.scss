@@ -1,0 +1,449 @@
+@use '@angular/material' as mat;
+
+$ceviu-primary-map: (
+  50: #ececff,
+  100: #d1d1f7,
+  200: #b2b2ef,
+  300: #8f8fe6,
+  400: #7575e0,
+  500: #5c5ced,
+  600: #4f4fd6,
+  700: #4141b9,
+  800: #34349c,
+  900: #232370,
+  contrast: (
+    50: #000000,
+    100: #000000,
+    200: #000000,
+    300: #ffffff,
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+$ceviu-accent-map: (
+  50: #e8e8f0,
+  100: #c5c5da,
+  200: #9f9fc2,
+  300: #7979aa,
+  400: #5c5c97,
+  500: #2d2d58,
+  600: #282850,
+  700: #222246,
+  800: #1c1c3d,
+  900: #11112c,
+  contrast: (
+    50: #000000,
+    100: #000000,
+    200: #000000,
+    300: #ffffff,
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+$ceviu-primary: mat.m2-define-palette($ceviu-primary-map, 500, 300, 700);
+$ceviu-accent: mat.m2-define-palette($ceviu-accent-map, 500, 300, 700);
+$ceviu-warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+$ceviu-theme: mat.m2-define-light-theme(
+  (
+    color: (
+      primary: $ceviu-primary,
+      accent: $ceviu-accent,
+      warn: $ceviu-warn,
+    ),
+    typography: mat.m2-define-typography-config(
+        $font-family: 'Arial, Helvetica, sans-serif',
+      ),
+    density: 0,
+  )
+);
+
+html {
+  @include mat.all-component-themes($ceviu-theme);
+}
+
+:root {
+  --ceviu-azul-fundo: #2d2d58;
+  --ceviu-azul: #5c5ced;
+  --ceviu-azul-outro: #49498f;
+  --ceviu-amarelo: #fcf030;
+  --ceviu-cinza: #737158;
+  --ceviu-cinza-escuro: #6b6350;
+  --ceviu-card-borda: #c8c8c8;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000000;
+  background-color: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ---------- Botoes (paridade visual com o Swing) ---------- */
+
+.btn-ceviu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: var(--ceviu-azul-fundo);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.15);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.btn-ceviu--secundario {
+  background-color: var(--ceviu-azul-outro);
+}
+
+.btn-ceviu--destaque {
+  background-color: var(--ceviu-azul);
+}
+
+.btn-ceviu--perigo {
+  background-color: #ff0000;
+}
+
+.btn-ceviu--salvar {
+  background-color: #ffa500;
+  color: #000000;
+}
+
+.btn-ceviu--claro {
+  background-color: #ffffff;
+  color: var(--ceviu-azul-fundo);
+  border: 1px solid var(--ceviu-azul-fundo);
+}
+
+/* ---------- Cards de midia/perfil ---------- */
+
+.card-ceviu {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--ceviu-card-borda);
+  border-radius: 2px;
+  background-color: #ffffff;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #f7f7fb;
+  }
+}
+
+.card-ceviu__capa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  background-color: #ffffff;
+}
+
+.card-ceviu__titulo {
+  display: block;
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.card-ceviu__linha {
+  display: block;
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--ceviu-cinza);
+}
+
+.card-ceviu--estatico {
+  cursor: default;
+
+  &:hover {
+    background-color: #ffffff;
+  }
+}
+
+.card-ceviu__acao {
+  display: block;
+  width: 160px;
+  margin: 10px auto 0;
+  font-size: 12px;
+}
+
+/* ---------- Grids (mesmo esquema do legado: fundo amarelo, linhas brancas) ---------- */
+
+.grid-ceviu {
+  background-color: var(--ceviu-amarelo);
+}
+
+.grid-ceviu__linha {
+  display: grid;
+  grid-gap: 20px;
+  padding: 10px 0;
+  background-color: #ffffff;
+}
+
+.grid-ceviu__linha--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-ceviu__linha--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-ceviu__vazio {
+  background-color: #ffffff;
+}
+
+/* ---------- Cabecalhos ---------- */
+
+.titulo-pagina {
+  margin: 0;
+  font-weight: 700;
+  color: #000000;
+}
+
+.titulo-secao {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ---------- Placeholder de imagem ---------- */
+
+.media-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 150px;
+  background-color: #f0f0f0;
+  border: 1px solid #dddddd;
+  font-size: 12px;
+  color: var(--ceviu-cinza);
+}
+
+/* ---------- Telas divididas (Login/Cadastro) ---------- */
+
+.tela-dividida {
+  display: flex;
+  min-height: 100vh;
+}
+
+.tela-dividida__painel-azul {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--ceviu-azul-fundo);
+  padding: 40px;
+}
+
+.tela-dividida__painel-azul img {
+  max-width: 100%;
+}
+
+.tela-dividida__painel-branco {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  padding: 40px;
+}
+
+/* ---------- Formularios ---------- */
+
+.form-ceviu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 420px;
+  max-width: 100%;
+}
+
+.form-ceviu__titulo {
+  margin: 0 0 30px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ceviu-azul-fundo);
+}
+
+.campo-icone__rotulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #000000;
+}
+
+.campo-ceviu {
+  width: 100%;
+  height: 35px;
+  padding: 0 8px;
+  border: 1px solid #999999;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #000000;
+  background-color: #ffffff;
+
+  &:focus {
+    outline: 2px solid var(--ceviu-azul);
+    outline-offset: -1px;
+  }
+}
+
+textarea.campo-ceviu {
+  height: auto;
+  min-height: 80px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.form-ceviu__botoes {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.lembrar-senha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #000000;
+}
+
+.erro-formulario {
+  margin: 0;
+  font-size: 12px;
+  color: #cc0000;
+}
+
+/* ---------- Snackbar de erro ---------- */
+
+.snackbar-erro {
+  --mdc-snackbar-container-color: #b3261e;
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  --mdc-snackbar-button-color: #ffffff;
+}
+
+/* ---------- Detalhes (dialogs de filme/serie) ---------- */
+
+.detalhe-titulo {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--ceviu-azul-fundo) !important;
+}
+
+.detalhe {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.detalhe__imagem {
+  flex: 0 0 250px;
+}
+
+.detalhe__info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.detalhe__titulo {
+  margin: 0 0 15px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ceviu-cinza);
+}
+
+.detalhe__linha {
+  margin: 4px 0;
+  font-size: 16px;
+  color: var(--ceviu-cinza);
+}
+
+.detalhe__rotulo {
+  margin: 20px 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.detalhe__sinopse {
+  width: 100%;
+  min-height: 140px;
+}
+
+.detalhe__acoes {
+  display: flex;
+  gap: 15px;
+  padding: 10px 24px 20px;
+}
+
+.detalhe__btn-preto {
+  background-color: #000000;
+}
+
+.erro-carregamento {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #cc0000;
+}
+
+.texto-vazio {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--ceviu-cinza);
+}
+
+@media (max-width: 700px) {
+  .detalhe {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-ceviu__linha--3,
+  .grid-ceviu__linha--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

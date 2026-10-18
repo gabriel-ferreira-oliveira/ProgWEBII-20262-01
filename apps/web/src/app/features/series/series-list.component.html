@@ -1,0 +1,33 @@
+<h1 class="titulo-pagina">Todas as Séries</h1>
+
+@if (series.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+} @else if (series.error()) {
+  <p class="erro-carregamento">
+    Falha ao carregar as series.
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="series.reload()">
+      Tentar novamente
+    </button>
+  </p>
+} @else if (series.value(); as lista) {
+  @if (lista.length === 0) {
+    <p class="texto-vazio">Nenhuma serie encontrada.</p>
+  } @else {
+    <div class="grid-ceviu">
+      @for (linha of linhas(); track $index) {
+        <div class="grid-ceviu__linha grid-ceviu__linha--3">
+          @for (serie of linha; track serie.id) {
+            <app-media-card
+              [imagePath]="caminhoImagem(serie.id)"
+              [imageWidth]="100"
+              [imageHeight]="150"
+              [title]="serie.title"
+              [lines]="linhasSerie(serie)"
+              (select)="abrirSerie(serie)"
+            />
+          }
+        </div>
+      }
+    </div>
+  }
+}

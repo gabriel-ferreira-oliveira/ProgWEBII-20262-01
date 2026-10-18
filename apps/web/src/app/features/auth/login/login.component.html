@@ -1,0 +1,45 @@
+<div class="tela-dividida">
+  <section class="tela-dividida__painel-azul">
+    <img src="imagens/Logo.png" alt="CÊ VIU SÔ" />
+  </section>
+
+  <section class="tela-dividida__painel-branco">
+    <form class="form-ceviu" [formGroup]="form" (ngSubmit)="entrar()">
+      <h1 class="form-ceviu__titulo">LOGIN</h1>
+
+      <label class="campo-icone__rotulo" for="login-email">
+        <img src="imagens/icone_login.png" alt="" width="30" height="30" />
+        <span>Email:</span>
+      </label>
+      <input
+        id="login-email"
+        class="campo-ceviu"
+        type="text"
+        formControlName="email"
+        autocomplete="username"
+      />
+
+      <label class="campo-icone__rotulo" for="login-senha">
+        <img src="imagens/icone_senha.png" alt="" width="30" height="30" />
+        <span>Senha:</span>
+      </label>
+      <input
+        id="login-senha"
+        class="campo-ceviu"
+        type="password"
+        formControlName="senha"
+        autocomplete="current-password"
+      />
+
+      <label class="lembrar-senha">
+        <input type="checkbox" formControlName="lembrarSenha" />
+        Lembrar senha
+      </label>
+
+      <div class="form-ceviu__botoes">
+        <button class="btn-ceviu" type="submit" [disabled]="carregando()">Entrar</button>
+        <button class="btn-ceviu" type="button" (click)="irParaCadastro()">Cadastrar</button>
+      </div>
+    </form>
+  </section>
+</div>

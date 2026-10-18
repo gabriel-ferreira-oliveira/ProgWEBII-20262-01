@@ -1,0 +1,66 @@
+<h2 mat-dialog-title class="detalhe-titulo">
+  Detalhes do Usuario - {{ perfil.value()?.detail.profile.name ?? '' }}
+</h2>
+
+@if (perfil.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<mat-dialog-content class="usuario">
+  @if (perfil.error()) {
+    <p class="erro-carregamento">
+      Falha ao carregar o perfil.
+      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="recarregar()">
+        Tentar novamente
+      </button>
+    </p>
+  } @else if (perfil.value(); as bundle) {
+    <div class="usuario__corpo">
+      <div class="usuario__imagem">
+        <app-media-image [path]="avatar" alt="Perfil" [width]="250" [height]="145" />
+      </div>
+
+      <div class="usuario__info">
+        <h3 class="detalhe__titulo">{{ bundle.detail.profile.name }}</h3>
+        <p class="detalhe__linha">Idade: {{ bundle.detail.profile.age }}</p>
+        <p class="detalhe__linha">Email: {{ bundle.detail.profile.email }}</p>
+
+        <h4 class="detalhe__rotulo">Sobre mim:</h4>
+        <p class="usuario__sobre">{{ bundle.detail.profile.bio }}</p>
+
+        <h4 class="detalhe__rotulo">Favoritos:</h4>
+        <div class="usuario__lista">
+          @if (bundle.favorites.length === 0) {
+            <p class="usuario__vazio">{{ listaVazia }}</p>
+          } @else {
+            @for (item of bundle.favorites; track $index) {
+              <p class="usuario__item">{{ item.title }}</p>
+            }
+          }
+        </div>
+
+        <h4 class="detalhe__rotulo">Series assistidas:</h4>
+        <div class="usuario__lista">
+          @if (bundle.watchedSeries.length === 0) {
+            <p class="usuario__vazio">{{ listaVazia }}</p>
+          } @else {
+            @for (item of bundle.watchedSeries; track $index) {
+              <p class="usuario__item">{{ item.title }}</p>
+            }
+          }
+        </div>
+
+        <h4 class="detalhe__rotulo">Filmes assistidos:</h4>
+        <div class="usuario__lista">
+          @if (bundle.watchedMovies.length === 0) {
+            <p class="usuario__vazio">{{ listaVazia }}</p>
+          } @else {
+            @for (item of bundle.watchedMovies; track $index) {
+              <p class="usuario__item">{{ item.title }}</p>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+</mat-dialog-content>

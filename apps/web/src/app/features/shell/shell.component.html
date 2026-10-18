@@ -1,0 +1,45 @@
+<div class="shell">
+  <aside class="shell__lateral">
+    <img class="shell__logo" src="imagens/Logo.png" alt="CÊ VIU SÔ" />
+    <nav class="shell__nav">
+      <a
+        class="btn-ceviu btn-ceviu--destaque shell__nav-item"
+        routerLink="/home"
+        routerLinkActive="shell__nav-item--ativo"
+      >
+        Inicio
+      </a>
+      <a
+        class="btn-ceviu btn-ceviu--secundario shell__nav-item"
+        routerLink="/movies"
+        routerLinkActive="shell__nav-item--ativo"
+      >
+        Filmes
+      </a>
+      <a
+        class="btn-ceviu btn-ceviu--secundario shell__nav-item"
+        routerLink="/series"
+        routerLinkActive="shell__nav-item--ativo"
+      >
+        Series
+      </a>
+      <a
+        class="btn-ceviu btn-ceviu--secundario shell__nav-item"
+        routerLink="/profiles"
+        routerLinkActive="shell__nav-item--ativo"
+      >
+        Perfis
+      </a>
+      @if (mostrarVoltar()) {
+        <button type="button" class="btn-ceviu btn-ceviu--secundario shell__nav-item" (click)="voltar()">
+          Voltar
+        </button>
+      }
+    </nav>
+    <span class="shell__espaco"></span>
+    <button type="button" class="btn-ceviu btn-ceviu--claro shell__nav-item" (click)="sair()">Sair</button>
+  </aside>
+  <main class="shell__conteudo">
+    <router-outlet />
+  </main>
+</div>

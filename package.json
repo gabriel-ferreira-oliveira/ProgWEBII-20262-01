@@ -1,0 +1,24 @@
+{
+  "name": "ceviu",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Migracao do sistema legado CeViu (Java/Swing) para NestJS 11 + SQLite e Angular",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @ceviu/api",
+    "dev": "npm run start:dev --workspace @ceviu/api",
+    "start": "npm run start:prod --workspace @ceviu/api",
+    "test": "npm run test --workspace @ceviu/api",
+    "test:e2e": "npm run test:e2e --workspace @ceviu/api",
+    "typecheck": "npm run typecheck --workspace @ceviu/api",
+    "migration:run": "npm run migration:run --workspace @ceviu/api",
+    "migration:revert": "npm run migration:revert --workspace @ceviu/api",
+    "migrate:legacy": "npm run migrate:legacy --workspace @ceviu/api",
+    "dev:web": "npm run start --workspace @ceviu/web",
+    "build:web": "npm run build --workspace @ceviu/web",
+    "typecheck:web": "npm run typecheck --workspace @ceviu/web"
+  }
+}

@@ -1,0 +1,33 @@
+<h1 class="titulo-pagina">Todos os Filmes</h1>
+
+@if (filmes.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+} @else if (filmes.error()) {
+  <p class="erro-carregamento">
+    Falha ao carregar os filmes.
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="filmes.reload()">
+      Tentar novamente
+    </button>
+  </p>
+} @else if (filmes.value(); as lista) {
+  @if (lista.length === 0) {
+    <p class="texto-vazio">Nenhum filme encontrado.</p>
+  } @else {
+    <div class="grid-ceviu">
+      @for (linha of linhas(); track $index) {
+        <div class="grid-ceviu__linha grid-ceviu__linha--3">
+          @for (filme of linha; track filme.id) {
+            <app-media-card
+              [imagePath]="caminhoImagem(filme.id)"
+              [imageWidth]="100"
+              [imageHeight]="150"
+              [title]="filme.title"
+              [lines]="linhasFilme(filme)"
+              (select)="abrirFilme(filme)"
+            />
+          }
+        </div>
+      }
+    </div>
+  }
+}

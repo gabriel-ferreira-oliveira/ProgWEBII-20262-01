@@ -1,0 +1,38 @@
+.painel-pesquisa {
+  margin: 0 0 20px;
+  padding: 10px 16px 16px;
+  border: 1px solid var(--ceviu-azul-fundo);
+
+  legend {
+    padding: 0 6px;
+    font-size: 12px;
+    color: var(--ceviu-azul-fundo);
+  }
+}
+
+.painel-pesquisa__campos {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.painel-pesquisa__rotulo {
+  font-size: 12px;
+  color: var(--ceviu-azul-fundo);
+}
+
+.painel-pesquisa__campo {
+  width: 150px;
+}
+
+.secao {
+  margin-bottom: 20px;
+}
+
+.secao__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 15px;
+}

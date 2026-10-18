@@ -1,0 +1,104 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import type { MovieDto, MovieWatchResultDto } from '@ceviu/shared';
+import { toMovieDto } from '../../common/mappers';
+import { Favorite } from '../../database/entities/favorite.entity';
+import { Movie } from '../../database/entities/movie.entity';
+import { User } from '../../database/entities/user.entity';
+import { WatchedMovie } from '../../database/entities/watched-movie.entity';
+
+@Injectable()
+export class MoviesService {
+  constructor(
+    @InjectRepository(Movie)
+    private readonly movies: Repository<Movie>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+    @InjectRepository(WatchedMovie)
+    private readonly watchedMovies: Repository<WatchedMovie>,
+    @InjectRepository(Favorite)
+    private readonly favorites: Repository<Favorite>,
+  ) {}
+
+  async list(): Promise<MovieDto[]> {
+    const movies = await this.movies.find({ order: { id: 'ASC' } });
+    return movies.map(toMovieDto);
+  }
+
+  async findEntity(id: number): Promise<Movie> {
+    const movie = await this.movies.findOne({ where: { id } });
+    if (movie === null) {
+      throw new NotFoundException('Filme nao encontrado');
+    }
+    return movie;
+  }
+
+  async findOne(id: number): Promise<MovieDto> {
+    return toMovieDto(await this.findEntity(id));
+  }
+
+  async updateSynopsis(id: number, synopsis: string): Promise<MovieDto> {
+    const movie = await this.findEntity(id);
+    movie.synopsis = synopsis;
+    const saved = await this.movies.save(movie);
+    return toMovieDto(saved);
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.findEntity(id);
+    await this.movies.softDelete({ id });
+  }
+
+  async watch(id: number, userId: number): Promise<MovieWatchResultDto> {
+    const movie = await this.findEntity(id);
+    const watchedMovieMinutes = await this.appendWatchedMovie(movie, userId);
+    return { watchedMovieMinutes };
+  }
+
+  async favorite(id: number, userId: number): Promise<MovieWatchResultDto> {
+    const movie = await this.findEntity(id);
+    const watchedMovieMinutes = await this.appendWatchedMovie(movie, userId);
+    await this.appendFavorite(movie, userId);
+    return { watchedMovieMinutes };
+  }
+
+  private async appendWatchedMovie(movie: Movie, userId: number): Promise<number> {
+    const user = await this.findUser(userId);
+    const position = await this.watchedMovies.count({ where: { userId } });
+    const entry = this.watchedMovies.create({
+      userId,
+      movieId: movie.id,
+      titleSnapshot: movie.title,
+      position,
+    });
+    await this.watchedMovies.save(entry);
+
+    const minutes = movie.durationMin ?? 0;
+    if (minutes > 0) {
+      await this.users.increment({ id: userId }, 'watchedMovieMinutes', minutes);
+    }
+    return user.watchedMovieMinutes + minutes;
+  }
+
+  private async appendFavorite(movie: Movie, userId: number): Promise<void> {
+    const position = await this.favorites.count({ where: { userId } });
+    const favorite = this.favorites.create({
+      userId,
+      mediaType: 'movie',
+      movieId: movie.id,
+      seriesId: null,
+      titleSnapshot: movie.title,
+      position,
+    });
+    await this.favorites.save(favorite);
+  }
+
+  private async findUser(userId: number): Promise<User> {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (user === null) {
+      throw new NotFoundException('Usuario nao encontrado');
+    }
+    return user;
+  }
+}

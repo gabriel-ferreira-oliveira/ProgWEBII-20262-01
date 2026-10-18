@@ -1,0 +1,52 @@
+<h2 mat-dialog-title class="detalhe-titulo">
+  Detalhes do Filme - {{ filme.value()?.title ?? '' }}
+</h2>
+
+@if (filme.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<mat-dialog-content class="detalhe">
+  @if (filme.error()) {
+    <p class="erro-carregamento">
+      Falha ao carregar o filme.
+      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="recarregar()">
+        Tentar novamente
+      </button>
+    </p>
+  } @else if (filme.value(); as movie) {
+    <div class="detalhe__imagem">
+      <app-media-image [path]="caminhoImagem()" [alt]="movie.title" [width]="250" [height]="350" />
+    </div>
+
+    <div class="detalhe__info">
+      <h3 class="detalhe__titulo">{{ movie.title }}</h3>
+      <p class="detalhe__linha">Ano: {{ formatarNumero(movie.year) }}</p>
+      <p class="detalhe__linha">Duração: {{ formatarNumero(movie.durationMin) }} minutos</p>
+      <p class="detalhe__linha">Gênero: {{ formatarTexto(movie.genre) }}</p>
+
+      <h4 class="detalhe__rotulo">Sinopse:</h4>
+      <textarea class="campo-ceviu detalhe__sinopse" rows="7" [formControl]="sinopse"></textarea>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions class="detalhe__acoes" align="start">
+  <button class="btn-ceviu detalhe__btn-preto" type="button" [disabled]="ocupado()" (click)="favoritar()">
+    Favoritar
+  </button>
+  <button
+    class="btn-ceviu btn-ceviu--destaque"
+    type="button"
+    [disabled]="ocupado()"
+    (click)="assistir()"
+  >
+    Marcar como Assistido
+  </button>
+  <button class="btn-ceviu btn-ceviu--perigo" type="button" [disabled]="ocupado()" (click)="deletar()">
+    Deletar
+  </button>
+  <button class="btn-ceviu btn-ceviu--salvar" type="button" [disabled]="salvando()" (click)="salvar()">
+    Salvar
+  </button>
+</mat-dialog-actions>

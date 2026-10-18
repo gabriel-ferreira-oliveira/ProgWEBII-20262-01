@@ -1,0 +1,41 @@
+<div class="tela-dividida">
+  <section class="tela-dividida__painel-branco">
+    <form class="form-ceviu" [formGroup]="form" (ngSubmit)="cadastrar()">
+      <h1 class="form-ceviu__titulo">CADASTRO</h1>
+
+      <label class="campo-rotulo" for="cadastro-nome">Nome:</label>
+      <input id="cadastro-nome" class="campo-ceviu" type="text" formControlName="nome" autocomplete="name" />
+
+      <label class="campo-rotulo" for="cadastro-email">Email:</label>
+      <input id="cadastro-email" class="campo-ceviu" type="text" formControlName="email" autocomplete="username" />
+
+      <label class="campo-rotulo" for="cadastro-idade">Idade:</label>
+      <input id="cadastro-idade" class="campo-ceviu" type="text" formControlName="idade" inputmode="numeric" />
+
+      <label class="campo-rotulo" for="cadastro-senha">Senha:</label>
+      <input
+        id="cadastro-senha"
+        class="campo-ceviu"
+        type="password"
+        formControlName="senha"
+        autocomplete="new-password"
+      />
+
+      <label class="campo-rotulo" for="cadastro-sobre">Sobre:</label>
+      <textarea id="cadastro-sobre" class="campo-ceviu" rows="3" formControlName="sobre"></textarea>
+
+      <div class="form-ceviu__botoes form-ceviu__botoes--laterais">
+        <button class="btn-ceviu" type="submit" [disabled]="carregando()">Cadastrar</button>
+        <button class="btn-ceviu" type="button" (click)="voltar()">Voltar</button>
+      </div>
+
+      <button class="btn-ceviu btn-ceviu--secundario form-ceviu__limpar" type="button" (click)="limparCampos()">
+        Limpar Campos
+      </button>
+    </form>
+  </section>
+
+  <section class="tela-dividida__painel-azul">
+    <img src="imagens/Logo.png" alt="CÊ VIU SÔ" />
+  </section>
+</div>

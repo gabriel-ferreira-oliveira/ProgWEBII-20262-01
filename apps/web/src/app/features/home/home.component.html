@@ -1,0 +1,91 @@
+<fieldset class="painel-pesquisa">
+  <legend>Pesquisar</legend>
+  <form class="painel-pesquisa__campos" [formGroup]="form" (ngSubmit)="pesquisar()">
+    <label class="painel-pesquisa__rotulo" for="pesquisa-nome">Nome:</label>
+    <input id="pesquisa-nome" class="campo-ceviu painel-pesquisa__campo" type="text" formControlName="nome" />
+
+    <label class="painel-pesquisa__rotulo" for="pesquisa-id">ID:</label>
+    <input
+      id="pesquisa-id"
+      class="campo-ceviu painel-pesquisa__campo"
+      type="text"
+      formControlName="id"
+      inputmode="numeric"
+    />
+
+    <button class="btn-ceviu btn-ceviu--secundario" type="submit">Pesquisar</button>
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="limparCampos()">
+      Limpar Campos
+    </button>
+  </form>
+</fieldset>
+
+<section class="secao">
+  <header class="secao__cabecalho">
+    <h2 class="titulo-secao">Filmes Populares</h2>
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="verTodosFilmes()">
+      Ver mais
+    </button>
+  </header>
+
+  @if (filmes.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  } @else if (filmes.error()) {
+    <p class="erro-carregamento">
+      Falha ao carregar os filmes.
+      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="filmes.reload()">
+        Tentar novamente
+      </button>
+    </p>
+  } @else {
+    <div class="grid-ceviu">
+      <div class="grid-ceviu__linha grid-ceviu__linha--4">
+        @for (filme of filmesPopulares(); track filme.id) {
+          <app-media-card
+            [imagePath]="caminhoFilme(filme.id)"
+            [imageWidth]="100"
+            [imageHeight]="150"
+            [title]="filme.title"
+            [lines]="linhasFilme(filme)"
+            (select)="abrirFilme(filme)"
+          />
+        }
+      </div>
+    </div>
+  }
+</section>
+
+<section class="secao">
+  <header class="secao__cabecalho">
+    <h2 class="titulo-secao">Series Populares</h2>
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="verTodasSeries()">
+      Ver mais
+    </button>
+  </header>
+
+  @if (series.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  } @else if (series.error()) {
+    <p class="erro-carregamento">
+      Falha ao carregar as series.
+      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="series.reload()">
+        Tentar novamente
+      </button>
+    </p>
+  } @else {
+    <div class="grid-ceviu">
+      <div class="grid-ceviu__linha grid-ceviu__linha--4">
+        @for (serie of seriesPopulares(); track serie.id) {
+          <app-media-card
+            [imagePath]="caminhoSerie(serie.id)"
+            [imageWidth]="100"
+            [imageHeight]="150"
+            [title]="serie.title"
+            [lines]="linhasSerie(serie)"
+            (select)="abrirSerie(serie)"
+          />
+        }
+      </div>
+    </div>
+  }
+</section>
