@@ -35,7 +35,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluída · `[!]` bloqu
 > **Fase 0 verificada** em 2026-10-18: suíte completa verde ao fim da T0.2 (26 unit · 22 e2e · typecheck · typecheck:web · build · build:web).
 
 ### Fase 1: Núcleo de reflexão
-- [ ] T1.1 Helpers de metadado por classe: gravar *own*, ler com merge pela cadeia de protótipos (herança), isolamento entre classes. Testes.
+- [x] T1.1 Helpers de metadado por classe: gravar *own*, ler com merge pela cadeia de protótipos (herança), isolamento entre classes. Testes.
 - [ ] T1.2 `inferType(target, key, override?)` sobre `design:type` (String, Number, Boolean, Date), com fallback para override quando vier `Object`. Testes de caracterização das limitações do `emitDecoratorMetadata` (uniões, `null`, `import type`).
 
 ### Fase 2: Validação própria
@@ -105,3 +105,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluída · `[!]` bloqu
 - **Contexto:** `git add docs/...` foi recusado; `git check-ignore -v` aponta `.gitignore:11` (`DOCS` maiúsculo, que casa com `docs/` por case-insensitivity no Windows). `git ls-files docs` confirma que nenhum documento está versionado, e o próprio `.gitignore` é ignorado (linha 42).
 - **Opção escolhida:** não alterar o `.gitignore`; commitar com `git add -f` apenas os arquivos exigidos pela T0.1 (`docs/auditoria-reflexao.md`, `docs/reflexao/PLANO.md`, `docs/reflexao/HANDOFF.md`). Depois de rastreados, edições futuras neles aparecem normalmente no `git status`; cada documento NOVO em `docs/reflexao/` exigirá `git add -f` na primeira vez.
 - **Motivo:** menor mudança que cumpre o critério "estiverem commitados" da T0.1 sem mexer no setup de ignores do usuário.
+
+### 2026-10-18 — T1.1: semântica do registro de metadados por classe
+- **Contexto:** helpers novos; o prompt não fixa onde ancorar o metadado nem como mesclar herança, e as fases 2/3/5 dependem disso.
+- **Opção escolhida:** gravação sempre *own* no **construtor** via `Reflect.defineMetadata`, normalizando o alvo (construtor, protótipo ou instância) para o construtor; leitura mesclada percorre a cadeia de construtores raiz→alvo (`Object.getPrototypeOf`, parando em `Function.prototype`); merge padrão: registros planos por spread (descendente vence chave a chave), arrays por concatenação ancestral→descendente, demais tipos o descendente substitui; valor own `undefined` é ignorado na leitura; `getMergedMetadata` devolve contêiner clonado (não vaza a referência gravada); chaves internas prefixadas com `ceviu:`.
+- **Motivo:** ancorar no construtor dá isolamento entre classes (irmãs, protótipo compartilhado intocado); o merge raiz→alvo serve tanto a decorators acumulativos (relações da F5) quanto à sobrescrita de regra (F2/F3); prefixo evita colisão com os metadados de TypeORM/Nest/Swagger; clone evita mutação acidental do registro por consumidores.
