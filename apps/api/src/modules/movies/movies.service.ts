@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { MovieDto, MovieWatchResultDto } from '@ceviu/shared';
+import { MediaService } from '../../common/media/media-service';
 import { toMovieDto } from '../../common/mappers';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { Movie } from '../../database/entities/movie.entity';
@@ -10,6 +11,8 @@ import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 
 @Injectable()
 export class MoviesService {
+  private readonly media: MediaService<Movie, MovieDto>;
+
   constructor(
     @InjectRepository(Movie)
     private readonly movies: Repository<Movie>,
@@ -19,23 +22,24 @@ export class MoviesService {
     private readonly watchedMovies: Repository<WatchedMovie>,
     @InjectRepository(Favorite)
     private readonly favorites: Repository<Favorite>,
-  ) {}
+  ) {
+    this.media = new MediaService<Movie, MovieDto>({
+      repository: movies,
+      toDto: toMovieDto,
+      notFoundMessage: 'Filme nao encontrado',
+    });
+  }
 
   async list(): Promise<MovieDto[]> {
-    const movies = await this.movies.find({ order: { id: 'ASC' } });
-    return movies.map(toMovieDto);
+    return this.media.list();
   }
 
   async findEntity(id: number): Promise<Movie> {
-    const movie = await this.movies.findOne({ where: { id } });
-    if (movie === null) {
-      throw new NotFoundException('Filme nao encontrado');
-    }
-    return movie;
+    return this.media.findEntity(id);
   }
 
   async findOne(id: number): Promise<MovieDto> {
-    return toMovieDto(await this.findEntity(id));
+    return this.media.findOne(id);
   }
 
   async updateSynopsis(id: number, synopsis: string): Promise<MovieDto> {
