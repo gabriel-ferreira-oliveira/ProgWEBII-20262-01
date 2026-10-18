@@ -2,7 +2,7 @@
  * Campos de formulário — metadado **só de UI** (T3.1).
  *
  * - Grava (`declareField`): metadado *own* no construtor da classe, sob a chave
- *   `ceviu:form:fields`, no formato `{ propriedade: FieldMetadata }`.
+ *   `ceviu:form:fields`, no formato `{ propriedade: FieldOptions }`.
  * - Lê (`getOwnFormFields` / `getFormFields`): own ou mesclado pela cadeia de herança (T1.1);
  *   a entrada da filha substitui a da base para a mesma propriedade.
  * - Lido por: `describeForm` (T3.2), controller de metadados (T3.4) e template do front (T3.8).
@@ -20,8 +20,8 @@ import type { MetadataTarget } from '../reflection/class-metadata';
 /** Controle visual do campo (mapeado pelo template em T3.8). */
 export type FieldControl = 'text' | 'password' | 'number' | 'textarea';
 
-/** Metadado **só de UI** de um campo. Sem `required`/`min`/`pattern` (vêm da validação). */
-export interface FieldMetadata {
+/** **Opções do decorator** (só de UI). O descritor de campo do `describeForm` é `FieldMetadata` (T3.2). */
+export interface FieldOptions {
   /** Rótulo exibido (o `:` final é do template, T3.8). */
   label: string;
   /** Controle visual. */
@@ -30,8 +30,8 @@ export interface FieldMetadata {
   order: number;
 }
 
-/** Mapa propriedade → metadado de UI (na ordem de declaração dos campos). */
-export type FormFieldsByProperty = Record<PropertyKey, FieldMetadata>;
+/** Mapa propriedade → opções de UI (na ordem de declaração dos campos). */
+export type FormFieldsByProperty = Record<PropertyKey, FieldOptions>;
 
 const FIELDS_KEY = 'form:fields';
 
@@ -40,14 +40,14 @@ function ownSnapshot(target: MetadataTarget): FormFieldsByProperty {
   return { ...(getOwnMetadata<FormFieldsByProperty>(target, FIELDS_KEY) ?? {}) };
 }
 
-/** Grava o metadado de UI da propriedade no registro *own* do construtor (cópia defensiva). */
+/** Grava as opções de UI da propriedade no registro *own* do construtor (cópia defensiva). */
 export function declareField(
   target: MetadataTarget,
   property: PropertyKey,
-  metadata: FieldMetadata,
+  options: FieldOptions,
 ): void {
   const fields = ownSnapshot(target);
-  fields[property] = { ...metadata };
+  fields[property] = { ...options };
   defineOwnMetadata(target, FIELDS_KEY, fields);
 }
 
@@ -65,6 +65,6 @@ export function getFormFields(target: MetadataTarget): FormFieldsByProperty | un
  * Marca a propriedade como campo de formulário — **só de UI**: grava `{label, control, order}`
  * em `ceviu:form:fields` e não declara regra alguma. Lido por `getFormFields`/`getOwnFormFields`.
  */
-export function Field(metadata: FieldMetadata): PropertyDecorator {
-  return (target, propertyKey) => declareField(target, propertyKey, metadata);
+export function Field(options: FieldOptions): PropertyDecorator {
+  return (target, propertyKey) => declareField(target, propertyKey, options);
 }

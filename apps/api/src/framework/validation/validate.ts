@@ -87,6 +87,20 @@ function messageFor(rule: ValidationRule, property: string): string {
 }
 
 /**
+ * Mensagens efetivas da regra `exactlyOneOf` (as do decorator ou os defaults do motor).
+ * Fonte única usada pelo próprio motor e pelo `describeForm` (T3.2), para o descritor não divergir.
+ */
+export function exactlyOneOfMessages(
+  rule: ClassValidationRule,
+): { missingMessage: string; multipleMessage: string } {
+  const list = rule.properties.join(', ');
+  return {
+    missingMessage: rule.missingMessage ?? `one of [${list}] must be provided`,
+    multipleMessage: rule.multipleMessage ?? `only one of [${list}] may be provided`,
+  };
+}
+
+/**
  * Valida `plain` contra as regras registradas de `Class`;
  * devolve a instância convertida e a lista de erros (vazia = válido).
  */
@@ -130,22 +144,11 @@ export function validate<T extends object>(
     if (classRule.kind === 'exactlyOneOf') {
       const target = classRule.properties.join(',');
       const provided = classRule.properties.filter((property) => isProvided(plain[property]));
+      const messages = exactlyOneOfMessages(classRule);
       if (provided.length === 0) {
-        errors.push({
-          property: target,
-          kind: 'exactlyOneOf',
-          message:
-            classRule.missingMessage ??
-            `one of [${classRule.properties.join(', ')}] must be provided`,
-        });
+        errors.push({ property: target, kind: 'exactlyOneOf', message: messages.missingMessage });
       } else if (provided.length > 1) {
-        errors.push({
-          property: target,
-          kind: 'exactlyOneOf',
-          message:
-            classRule.multipleMessage ??
-            `only one of [${classRule.properties.join(', ')}] may be provided`,
-        });
+        errors.push({ property: target, kind: 'exactlyOneOf', message: messages.multipleMessage });
       }
     }
   }
