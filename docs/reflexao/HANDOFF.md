@@ -1,39 +1,47 @@
-# HANDOFF (atualizado em 2026-10-18 12:50)
+# HANDOFF (atualizado em 2026-10-18 12:58)
 
 ## Retomada em 30 segundos
-- Branch: `feat/reflexao` | Último commit: `T1.1: helpers de metadado por classe (registro reflexivo)` (hash exato: `git log -1 --format=%h`)
-- Árvore limpa? sim (após o commit da T1.1)
-- **Próxima ação exata:** T1.2 (aguarda pedido do usuário — regra 1) — marcar `[~]` no PLANO e "Em andamento" no HANDOFF; escrever o spec primeiro em `apps/api/src/framework/reflection/infer-type.spec.ts` para `inferType(target, key, override?)` sobre `design:type` (String/Number/Boolean/Date), com fallback para override quando `Object`; depois `infer-type.ts`; rodar `npm test` + `npm run typecheck`; commit `T1.2: ...`.
+- Branch: `feat/reflexao` | Último commit: `T1.2: inferência de tipo sobre design:type (Fase 1 completa)` (hash exato: `git log -1 --format=%h`)
+- Árvore limpa? sim (após o commit da T1.2)
+- **Próxima ação exata:** Fase 2, **T2.1** (aguarda pedido do usuário — regra 1) — decorators `@IsString @IsNotEmpty @IsOptional @IsInt @Min @MaxLength @Matches` que só gravam regras no registro (usar `defineOwnMetadata`/`getMergedMetadata` de T1.1; chaves novas prefixadas `ceviu:`). Marcar `[~]` no PLANO e "Em andamento" no HANDOFF; spec primeiro em `apps/api/src/framework/validation/`; depois `npm test` + `npm run typecheck`; commit `T2.1: ...`.
 
 ## Estado
-- Concluídas: **T0.1**, **T0.2** e **T1.1** (helpers do registro reflexivo: `defineOwnMetadata`/`getOwnMetadata`/`getMergedMetadata` em `apps/api/src/framework/reflection/class-metadata.ts` + 14 testes; semântica registrada em Decisões no PLANO).
+- Concluídas: **T0.1**, **T0.2**, **T1.1** (registro reflexivo) e **T1.2** (`inferType`). **Fase 1 verificada** no PLANO (suíte completa verde ao fim da T1.2).
 - Em andamento: nenhuma.
 - Bloqueadas: nenhuma.
 
-## Verificação (última execução — 2026-10-18, fim da T1.1)
+## Verificação (última execução — 2026-10-18, fim da T1.2 / fechamento da Fase 1)
 | Comando | Resultado | Observação |
 |---|---|---|
-| `git status` (pré-T1.1) | limpo, `feat/reflexao` @ `ef2623b` | antes de qualquer edição |
-| `npm test` (baseline T1.1) | 26/26 passaram (5 suites) | pré-implementação |
-| `npx jest framework/reflection` (spec primeiro) | falhou (TS2307: módulo inexistente) | vermelho intencional do TDD (spec antes do helper) |
-| `npx jest framework/reflection` (pós-impl) | 14/14 passaram | novo spec `class-metadata.spec.ts` |
-| `npm test` (final) | 40/40 passaram (6 suites) | 26 antigos + 14 novos, sem regressão |
+| `git status` (pré-T1.2) | limpo, `feat/reflexao` @ `82ff7f8` | antes de qualquer edição |
+| `npm test` (baseline T1.2) | 40/40 passaram (6 suites) | pré-implementação |
+| experimento `_experimento.spec.ts` (descartado) | — | caracterizou `design:type`: uniões/null → `Object`; `?` preserva tipo; `string[]` → `Array`; `import type` → `Function`; sem decorator → ausente |
+| `npx jest infer-type` (spec primeiro) | falhou (TS2307: módulo inexistente) | vermelho intencional do TDD |
+| `npx jest infer-type` (pós-impl) | 16/16 passaram | `infer-type.spec.ts` (11 de comportamento + 5 de caracterização bruta) |
+| `npm test` (final) | 56/56 passaram (7 suites) | 40 antigos + 16 novos, sem regressão |
+| `npm run test:e2e` | 22/22 passaram | fechamento de fase (regra 14) |
 | `npm run typecheck` | sem erros | tsc strict (src + test) |
 | `npm run typecheck:web` | sem erros | tsc strict do frontend |
+| `npm run build` | sem erros | dist/ da API |
+| `npm run build:web` | ok (390,78 kB inicial) | `ng build`, ~2,2 s |
 
-**Não verificado nesta tarefa:** `test:e2e`, `build` e `build:web` não foram rerodados — a T1.1 não toca rotas, DTO, banco nem front (só módulo novo + spec). A regra 3e os exigiria; o tipo de mudança não. Rodá-los de novo na T1.2 se ela tocar `emitDecoratorMetadata` sem criar rota (também não deve exigir).
+**Não verificado:** nada pendente para esta fase; experimento de caracterização foi removido (`_experimento*`) e não está no commit.
 
 ## Mapa do que foi criado
-- `apps/api/src/framework/reflection/class-metadata.ts` → T1.1: grava metadado *own* no **construtor** sob chave `ceviu:<key>` (`Reflect.defineMetadata`), normalizando alvo (construtor/protótipo/instância); leitura mesclada raiz→alvo (registros por spread, arrays concat, demais tipos descendente vence; contêiner clonado). Doc-comment no topo diz o que grava e onde é lido (regra 13). Consumido por F2/F3/F5.
-- `apps/api/src/framework/reflection/class-metadata.spec.ts` → T1.1: 14 testes (roundtrip, isolamento entre classes/irmãs, own sem merge, herança multinível, override de chave, arrays, primitivos, filha não altera base, normalização de alvo, chave inexistente, merge customizado, clone da leitura).
+- `apps/api/src/framework/reflection/class-metadata.ts` → T1.1: grava metadado *own* no **construtor** sob chave `ceviu:<key>` (`Reflect.defineMetadata`), normalizando alvo (construtor/protótipo/instância); leitura mesclada raiz→alvo (registros por spread, arrays concat, demais tipos descendente vence; contêiner clonado). Consumido por F2/F3/F5. (+ `class-metadata.spec.ts` — 14 testes.)
+- `apps/api/src/framework/reflection/infer-type.ts` → T1.2: lê `design:type` (protótipo do alvo) e devolve o tipo **só** para String/Number/Boolean/Date; qualquer outro metadado (Object, Array, Function, classe, ausente) devolve o `override` (fallback). Consumido por F2 (conversão plain→instância) e F5 (tipo da coluna). (+ `infer-type.spec.ts` — 16 testes, inclui caracterização bruta do emissor.)
+- `apps/api/src/testing/infer-type-fixture.ts` → T1.2: classe usada **apenas** via `import type` no spec, para caracterizar a limitação (vira `Function`). `src/testing/` já é a convenção de helpers de teste (vide `factories.ts`) e é excluída do build.
 - `docs/reflexao/INVENTARIO.md` → T0.2: métodos de `Repository`/`DataSource` realmente usados (com `arquivo:linha`), decorators das entidades, mocks/specs/e2e, grafo service↔entidade, "não usados" e implicações para o mini-ORM (insumo da T5.8).
 - `docs/auditoria-reflexao.md` → T0.1: reflexão atual (zero `Reflect.*` manual), famílias de decorators, duplicação mapeada às fases, riscos.
-- `docs/reflexao/PLANO.md` → seções 2 e 5 literais do prompt + "Decisões" (append-only) + "Fase 0 verificada". Fonte da verdade.
+- `docs/reflexao/PLANO.md` → seções 2 e 5 literais do prompt + "Decisões" (append-only) + "Fase 0/1 verificadas". Fonte da verdade.
 - `docs/reflexao/HANDOFF.md` → este arquivo (reescrito inteiro a cada tarefa).
 
 ## Armadilhas descobertas
+- **`emitDecoratorMetadata` (caracterizado na T1.2, TS 5.7 + tsconfig base):** uniões e `| null`/`| undefined` explícitos → `Object`; propriedade **opcional** (`?: number`) preserva o tipo (`Number`); `string[]` → `Array`; classe importada via **`import type`** → `Function` (não `Object`!); propriedade **sem decorator** não recebe metadado. Sempre use `inferType(..., override)` quando o tipo real importa.
+- tsconfig base: `strict`, `strictNullChecks`, `emitDecoratorMetadata` ligados; **sem** `isolatedModules` (por isso `import type` compila, só degrada o metadado).
 - `docs/` cai na regra `DOCS` do `.gitignore:11` (case-insensitive no Windows); documento **novo** em `docs/` exige `git add -f` na primeira vez; depois de rastreado, edições aparecem normalmente.
-- Ao editar "Decisões" do PLANO: o arquivo é **append-only**; anexar no fim (a T1.1 quase corrompeu a seção ao tentar substituir cabeçalho existente — conferir após editar).
+- "Decisões" do PLANO é **append-only**: anexar no fim (nunca substituir cabeçalho de decisão existente — quase corrompeu na T1.1).
+- `git add` com pathspec misto (novo + docs modificados) pode sair com erro "paths are ignored" mas ainda deixar tudo staged — conferir com `git status` antes de assumir falha.
 - `JwtStrategy` **não** consulta repositório (`jwt.strategy.ts:17-19` devolve o payload direto) — o texto do `docs/HANDOFF.md` §12.3 descrevia um carregamento de usuário que não existe.
 - `created_at` não tem DEFAULT no DDL; quem preenche é o driver TypeORM (`@CreateDateColumn`) — o mini-ORM deve fazer o mesmo no insert. No schema só existem `integer` e `text` (datas como texto).
 - Sem `busy_timeout` em lugar nenhum (WAL ligado) — risco da coexistência TypeORM+mini-ORM fica para a T5.3.

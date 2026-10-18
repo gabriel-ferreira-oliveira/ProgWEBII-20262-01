@@ -36,7 +36,9 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluída · `[!]` bloqu
 
 ### Fase 1: Núcleo de reflexão
 - [x] T1.1 Helpers de metadado por classe: gravar *own*, ler com merge pela cadeia de protótipos (herança), isolamento entre classes. Testes.
-- [ ] T1.2 `inferType(target, key, override?)` sobre `design:type` (String, Number, Boolean, Date), com fallback para override quando vier `Object`. Testes de caracterização das limitações do `emitDecoratorMetadata` (uniões, `null`, `import type`).
+- [x] T1.2 `inferType(target, key, override?)` sobre `design:type` (String, Number, Boolean, Date), com fallback para override quando vier `Object`. Testes de caracterização das limitações do `emitDecoratorMetadata` (uniões, `null`, `import type`).
+
+> **Fase 1 verificada** em 2026-10-18: suíte completa verde ao fim da T1.2 (56 unit · 22 e2e · typecheck · typecheck:web · build · build:web).
 
 ### Fase 2: Validação própria
 - [ ] T2.1 Decorators `@IsString @IsNotEmpty @IsOptional @IsInt @Min @MaxLength @Matches`, que só gravam regras no registro. Testes.
@@ -110,3 +112,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluída · `[!]` bloqu
 - **Contexto:** helpers novos; o prompt não fixa onde ancorar o metadado nem como mesclar herança, e as fases 2/3/5 dependem disso.
 - **Opção escolhida:** gravação sempre *own* no **construtor** via `Reflect.defineMetadata`, normalizando o alvo (construtor, protótipo ou instância) para o construtor; leitura mesclada percorre a cadeia de construtores raiz→alvo (`Object.getPrototypeOf`, parando em `Function.prototype`); merge padrão: registros planos por spread (descendente vence chave a chave), arrays por concatenação ancestral→descendente, demais tipos o descendente substitui; valor own `undefined` é ignorado na leitura; `getMergedMetadata` devolve contêiner clonado (não vaza a referência gravada); chaves internas prefixadas com `ceviu:`.
 - **Motivo:** ancorar no construtor dá isolamento entre classes (irmãs, protótipo compartilhado intocado); o merge raiz→alvo serve tanto a decorators acumulativos (relações da F5) quanto à sobrescrita de regra (F2/F3); prefixo evita colisão com os metadados de TypeORM/Nest/Swagger; clone evita mutação acidental do registro por consumidores.
+
+### 2026-10-18 — T1.2: contrato do `inferType` (override é fallback, não precedência)
+- **Contexto:** `design:type` tem limitações caracterizadas empiricamente (no toolchain do repo, TS 5.7 + tsconfig base): uniões e `| null`/`| undefined` explícitos → `Object`; `string[]` → `Array`; classe via `import type` → `Function`; propriedade sem decorator → metadado ausente. Era preciso fixar o que o `inferType` faz nesses casos.
+- **Opção escolhida:** só String/Number/Boolean/Date são "inferidos"; qualquer outro resultado do metadado (Object, Array, Function, classe, ausente) devolve o `override`; quando o metadado é um dos quatro, o `override` é ignorado (o override é fallback de quem conhece o tipo real, não precedência); alvo normalizado para o protótipo (construtor/protótipo/instância aceitos); sem override e sem tipo suportado → `undefined`.
+- **Motivo:** consumidores (F2/F5) só precisam dos quatro primitivos para conversão/tipagem de coluna; tratar `Function` (import type) como tipo seria bug silencioso — o fallback explícito é obrigatório; os testes de caracterização bruta guardam o comportamento do emissor (falham primeiro se o TS mudar).
