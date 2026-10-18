@@ -1,25 +1,28 @@
 /**
- * Motor de validação próprio — lê as regras do registro (`getValidationRules`,
- * chave `ceviu:validation:rules`, gravadas pelos decorators da T2.1), converte o
- * plain em instância da classe (via `inferType`) e devolve erros estruturados.
+ * Motor de validação próprio — lê as regras do registro (`getValidationRules` e
+ * `getClassValidationRules`, chaves `ceviu:validation:rules`/`ceviu:validation:class-rules`,
+ * gravadas pelos decorators da T2.1/T2.3), converte o plain em instância da classe (via
+ * `inferType`) e devolve erros estruturados.
  *
- * - Lê: registro de regras das propriedades + `design:type` (só para converter número em string).
+ * - Lê: registro de regras das propriedades e de classe + `design:type` (só para converter número em string).
  * - Conversão: apenas design:type Number com string numérica (com `trim`, paridade com o
  *   `@Type(() => Number)` do legado); demais tipos passam como estão (paridade com o pipe legado
  *   sem `enableImplicitConversion`).
  * - Whitelist: chave do plain que não está no registro vira erro `property X should not exist`
  *   (paridade com `whitelist/forbidNonWhitelisted`); a instância só recebe propriedades registradas.
+ * - Regras de classe (ex.: `exactlyOneOf`): executadas no fim, sobre a presença bruta no plain
+ *   (string vazia conta como ausente — paridade com `search.service.ts:22`).
  * - Mensagens: padrões do class-validator, para a paridade HTTP da T2.4.
  * - Lido por: pipe global composto (T2.4) e specs da fase; retorna `{ value, errors }` (não lança).
  */
 import { inferType } from '../reflection/infer-type';
-import { getValidationRules } from './validation-registry';
-import type { ValidationRule } from './validation-registry';
+import { getClassValidationRules, getValidationRules } from './validation-registry';
+import type { ClassValidationRule, ValidationRule } from './validation-registry';
 
-/** Erro estruturado de validação: propriedade, regra violada e mensagem pronta (padrão class-validator). */
+/** Erro estruturado de validação: propriedade(s), regra violada e mensagem pronta (padrão class-validator). */
 export interface ValidationIssue {
   property: string;
-  kind: ValidationRule['kind'] | 'whitelist';
+  kind: ValidationRule['kind'] | ClassValidationRule['kind'] | 'whitelist';
   message: string;
 }
 
@@ -123,5 +126,34 @@ export function validate<T extends object>(
     }
   }
 
+  for (const classRule of getClassValidationRules(Class) ?? []) {
+    if (classRule.kind === 'exactlyOneOf') {
+      const target = classRule.properties.join(',');
+      const provided = classRule.properties.filter((property) => isProvided(plain[property]));
+      if (provided.length === 0) {
+        errors.push({
+          property: target,
+          kind: 'exactlyOneOf',
+          message:
+            classRule.missingMessage ??
+            `one of [${classRule.properties.join(', ')}] must be provided`,
+        });
+      } else if (provided.length > 1) {
+        errors.push({
+          property: target,
+          kind: 'exactlyOneOf',
+          message:
+            classRule.multipleMessage ??
+            `only one of [${classRule.properties.join(', ')}] may be provided`,
+        });
+      }
+    }
+  }
+
   return { value, errors };
+}
+
+/** Presente para a regra de classe: definido, não nulo e não string vazia (paridade `search.service.ts:22`). */
+function isProvided(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== '';
 }

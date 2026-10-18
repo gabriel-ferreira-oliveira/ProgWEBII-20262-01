@@ -1,12 +1,13 @@
 /**
- * Decorators de validação — **só gravam** regras no registro (`declareRule`,
- * chave `ceviu:validation:rules`); quem executa é o motor `validate` (T2.2).
- * Assinaturas espelham class-validator para a migração dos DTOs trocar apenas o import (T2.5+).
+ * Decorators de validação — **só gravam** regras no registro (`declareRule`/`declareClassRule`,
+ * chaves `ceviu:validation:rules` e `ceviu:validation:class-rules`); quem executa é o motor
+ * `validate` (T2.2). Assinaturas espelham class-validator para a migração dos DTOs trocar apenas
+ * o import (T2.5+); `ExactlyOneOf` é regra própria de classe.
  *
- * Lidos por: `getValidationRules` (F2 — motor de validação) e `describeForm` (F3 — contrato de formulário).
+ * Lidos por: `getValidationRules`/`getClassValidationRules` (F2) e `describeForm` (F3).
  */
-import { declareRule } from './validation-registry';
-import type { ValidationRule } from './validation-registry';
+import { declareClassRule, declareRule } from './validation-registry';
+import type { ClassValidationRule, ValidationRule } from './validation-registry';
 
 function rule(validationRule: ValidationRule): PropertyDecorator {
   return (target, propertyKey) => declareRule(target, propertyKey, validationRule);
@@ -45,4 +46,32 @@ export function MaxLength(value: number): PropertyDecorator {
 /** O texto deve casar com o padrão (paridade com `class-validator.parseMessage`). */
 export function Matches(pattern: RegExp): PropertyDecorator {
   return rule({ kind: 'matches', pattern });
+}
+
+/** Mensagens por caso da regra `ExactlyOneOf` (ausência de todos × mais de um preenchido). */
+export interface ExactlyOneOfMessages {
+  missing?: string;
+  multiple?: string;
+}
+
+/**
+ * Regra **de classe**: exatamente uma das propriedades deve estar preenchida.
+ * `message` como string vale para os dois casos; como objeto permite mensagens distintas
+ * (paridade com as duas mensagens do legado em `search.service.ts:26,29`).
+ * Gravada em `ceviu:validation:class-rules`; executada pelo motor após as regras de propriedade.
+ */
+export function ExactlyOneOf(
+  properties: string[],
+  message?: string | ExactlyOneOfMessages,
+): ClassDecorator {
+  const messages =
+    typeof message === 'string'
+      ? { missingMessage: message, multipleMessage: message }
+      : { missingMessage: message?.missing, multipleMessage: message?.multiple };
+  const classRule: ClassValidationRule = {
+    kind: 'exactlyOneOf',
+    properties: [...properties],
+    ...messages,
+  };
+  return (target) => declareClassRule(target, classRule);
 }
