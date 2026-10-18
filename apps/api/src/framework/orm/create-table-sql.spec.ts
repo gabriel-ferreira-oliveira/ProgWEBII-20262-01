@@ -8,36 +8,9 @@ import { WatchedSeries as WatchedSeriesEntity } from '../../database/entities/wa
 import { InitialSchema1730000000000 } from '../../database/migrations/1730000000000-InitialSchema';
 import { createTableSql } from './create-table-sql';
 import { Database } from './database';
-import { Column, Entity, PrimaryKey } from './entity';
+import { Column, Entity, primaryKeyOf, requireEntityMeta } from './entity';
 
-/** Réplica mini-ORM da única tabela ainda não decorada (`favorites`); as demais já são as classes reais. */
-
-@Entity('favorites')
-class Favorite {
-  @PrimaryKey()
-  id!: number;
-
-  @Column({ name: 'user_id', type: Number })
-  userId!: number;
-
-  @Column({ name: 'media_type' })
-  mediaType!: string;
-
-  @Column({ name: 'movie_id', type: Number, nullable: true })
-  movieId!: number | null;
-
-  @Column({ name: 'series_id', type: Number, nullable: true })
-  seriesId!: number | null;
-
-  @Column({ name: 'title_snapshot' })
-  titleSnapshot!: string;
-
-  @Column({ type: Number })
-  position!: number;
-
-  @Column({ name: 'created_at' })
-  createdAt!: string;
-}
+/** As 6 tabelas do schema já são as classes reais (T5.9.2–T5.9.8); só a classe-sem-chave fica aqui. */
 
 @Entity('sem_chave')
 class SemChave {
@@ -71,7 +44,7 @@ describe('createTableSql (T5.5)', () => {
     ['series', SeriesEntity],
     ['watched_movies', WatchedMovieEntity],
     ['watched_series', WatchedSeriesEntity],
-    ['favorites', Favorite],
+    ['favorites', FavoriteEntity],
   ];
 
   let migrated: DataSource;
@@ -132,5 +105,56 @@ describe('createTableSql (T5.5)', () => {
 
   it('sem @PrimaryKey falha', () => {
     expect(() => createTableSql(SemChave)).toThrow(/@PrimaryKey/);
+  });
+});
+
+describe('metadados reais das 6 entidades (T5.9.8)', () => {
+  const entities = [
+    UserEntity,
+    MovieEntity,
+    SeriesEntity,
+    WatchedMovieEntity,
+    WatchedSeriesEntity,
+    FavoriteEntity,
+  ];
+
+  it('todas têm tabela e chave primária no metadado do mini-ORM', () => {
+    for (const entity of entities) {
+      const meta = requireEntityMeta(entity);
+      expect(meta.table.length).toBeGreaterThan(0);
+      expect(primaryKeyOf(meta)?.name).toBe('id');
+    }
+  });
+
+  it('os inversos da User apontam para @ManyToOne existentes nas tabelas filhas', () => {
+    const oneToMany = requireEntityMeta(UserEntity).relations;
+    expect(oneToMany.map((relation) => relation.property).sort()).toEqual([
+      'favorites',
+      'watchedMovies',
+      'watchedSeries',
+    ]);
+
+    for (const relation of oneToMany) {
+      if (relation.kind !== 'one-to-many') {
+        throw new Error(`A relação "${relation.property}" devia ser one-to-many.`);
+      }
+      const inverse = requireEntityMeta(relation.target()).relations.find(
+        (candidate) => candidate.kind === 'many-to-one' && candidate.property === relation.inverse,
+      );
+      expect(inverse).toBeDefined();
+    }
+  });
+
+  it('as FKs das tabelas filhas batem com o schema real', () => {
+    const expected: Array<[new () => object, string[]]> = [
+      [WatchedMovieEntity, ['user_id', 'movie_id']],
+      [WatchedSeriesEntity, ['user_id', 'series_id']],
+      [FavoriteEntity, ['user_id', 'movie_id', 'series_id']],
+    ];
+
+    for (const [entity, columns] of expected) {
+      const relations = requireEntityMeta(entity).relations;
+      expect(relations.map((relation) => (relation.kind === 'many-to-one' ? relation.column : ''))).toEqual(columns);
+    }
   });
 });
