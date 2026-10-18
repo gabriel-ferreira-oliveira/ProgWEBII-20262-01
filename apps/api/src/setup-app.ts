@@ -1,17 +1,11 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ComposedValidationPipe } from './framework/validation/validation.pipe';
 
 export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(new ComposedValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableCors({ origin: 'http://localhost:4200' });
 
