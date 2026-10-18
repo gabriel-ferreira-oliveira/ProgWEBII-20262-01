@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from '../../../framework/validation/decorators';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Gabriel Silva' })
