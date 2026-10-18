@@ -10,7 +10,7 @@ import { createTableSql } from './create-table-sql';
 import { Database } from './database';
 import { Column, Entity, PrimaryKey } from './entity';
 
-/** Réplicas mini-ORM das 6 tabelas da migration (mesma ordem de colunas do schema real). */
+/** Réplicas mini-ORM das tabelas ainda não decoradas (a de `movies` já é a classe real — T5.9.2). */
 
 @Entity('users')
 class User {
@@ -43,33 +43,6 @@ class User {
 
   @Column({ name: 'total_minutes', default: 0 })
   totalMinutes!: number;
-
-  @Column({ name: 'created_at' })
-  createdAt!: string;
-
-  @Column({ type: String, name: 'deleted_at', nullable: true })
-  deletedAt!: string | null;
-}
-
-@Entity('movies')
-class Movie {
-  @PrimaryKey({ autoIncrement: false })
-  id!: number;
-
-  @Column()
-  title!: string;
-
-  @Column({ type: String, nullable: true })
-  genre!: string | null;
-
-  @Column({ type: String, nullable: true })
-  synopsis!: string | null;
-
-  @Column({ type: Number, nullable: true })
-  year!: number | null;
-
-  @Column({ type: Number, name: 'duration_min', nullable: true })
-  durationMin!: number | null;
 
   @Column({ name: 'created_at' })
   createdAt!: string;
@@ -208,7 +181,7 @@ function normalize(rows: ColumnInfo[]) {
 describe('createTableSql (T5.5)', () => {
   const cases: Array<[string, new () => object]> = [
     ['users', User],
-    ['movies', Movie],
+    ['movies', MovieEntity],
     ['series', Series],
     ['watched_movies', WatchedMovie],
     ['watched_series', WatchedSeries],
@@ -262,7 +235,7 @@ describe('createTableSql (T5.5)', () => {
 
   it('AUTOINCREMENT entra na chave gerada e fica de fora quando autoIncrement é false', () => {
     db.run(createTableSql(User));
-    db.run(createTableSql(Movie));
+    db.run(createTableSql(MovieEntity));
 
     const sqlOf = (table: string): string =>
       (db.get('SELECT sql FROM sqlite_master WHERE name = ?', [table])?.sql ?? '') as string;
