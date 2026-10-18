@@ -10,46 +10,7 @@ import { createTableSql } from './create-table-sql';
 import { Database } from './database';
 import { Column, Entity, PrimaryKey } from './entity';
 
-/** Réplicas mini-ORM das tabelas ainda não decoradas (`movies` e `series` já são as classes reais — T5.9.2/3). */
-
-@Entity('users')
-class User {
-  @PrimaryKey()
-  id!: number;
-
-  @Column({ unique: true })
-  email!: string;
-
-  @Column({ name: 'password_hash' })
-  passwordHash!: string;
-
-  @Column()
-  name!: string;
-
-  @Column({ type: String, nullable: true })
-  country!: string | null;
-
-  @Column({ type: Number, nullable: true })
-  age!: number | null;
-
-  @Column({ type: String, nullable: true })
-  bio!: string | null;
-
-  @Column({ name: 'watched_movie_minutes', default: 0 })
-  watchedMovieMinutes!: number;
-
-  @Column({ name: 'watched_series_minutes', default: 0 })
-  watchedSeriesMinutes!: number;
-
-  @Column({ name: 'total_minutes', default: 0 })
-  totalMinutes!: number;
-
-  @Column({ name: 'created_at' })
-  createdAt!: string;
-
-  @Column({ type: String, name: 'deleted_at', nullable: true })
-  deletedAt!: string | null;
-}
+/** Réplicas mini-ORM das tabelas ainda não decoradas (`users`, `movies` e `series` já são as classes reais). */
 
 @Entity('watched_movies')
 class WatchedMovie {
@@ -147,7 +108,7 @@ function normalize(rows: ColumnInfo[]) {
 
 describe('createTableSql (T5.5)', () => {
   const cases: Array<[string, new () => object]> = [
-    ['users', User],
+    ['users', UserEntity],
     ['movies', MovieEntity],
     ['series', SeriesEntity],
     ['watched_movies', WatchedMovie],
@@ -201,7 +162,7 @@ describe('createTableSql (T5.5)', () => {
   );
 
   it('AUTOINCREMENT entra na chave gerada e fica de fora quando autoIncrement é false', () => {
-    db.run(createTableSql(User));
+    db.run(createTableSql(UserEntity));
     db.run(createTableSql(MovieEntity));
 
     const sqlOf = (table: string): string =>
