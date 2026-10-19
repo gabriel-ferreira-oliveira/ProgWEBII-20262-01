@@ -1,0 +1,33 @@
+<h1 class="titulo-pagina">{{ entrada()?.metadados.listTitle }}</h1>
+
+@if (midias.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+} @else if (midias.error()) {
+  <p class="erro-carregamento">
+    {{ entrada()?.metadados.listErrorMessage }}
+    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="midias.reload()">
+      Tentar novamente
+    </button>
+  </p>
+} @else if (midias.value(); as lista) {
+  @if (lista.length === 0) {
+    <p class="texto-vazio">{{ entrada()?.metadados.listEmptyMessage }}</p>
+  } @else {
+    <div class="grid-ceviu">
+      @for (linha of linhas(); track $index) {
+        <div class="grid-ceviu__linha grid-ceviu__linha--3">
+          @for (midia of linha; track midia.id) {
+            <app-media-card
+              [imagePath]="caminhoImagem(midia.id)"
+              [imageWidth]="100"
+              [imageHeight]="150"
+              [title]="midia.title"
+              [lines]="linhasCard(midia)"
+              (select)="abrir(midia)"
+            />
+          }
+        </div>
+      }
+    </div>
+  }
+}

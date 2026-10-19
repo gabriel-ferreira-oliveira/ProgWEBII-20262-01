@@ -11,13 +11,11 @@ import { MetadataApiService } from '../../core/forms/metadata-api.service';
 import { NoticeService } from '../../core/notices/notice.service';
 import { MediaCardComponent } from '../../shared/media-card/media-card.component';
 import { caminhoImagemFilme, caminhoImagemSerie, formatNumber, formatText } from '../../shared/utils/format';
-import { MovieDetailsDialogComponent } from '../dialogs/movie-details-dialog/movie-details-dialog.component';
+import { MediaDetailsDialogComponent } from '../dialogs/media-details-dialog/media-details-dialog.component';
 import type {
+  MediaDetailsDialogData,
   MediaDetailsDialogResult,
-  MovieDetailsDialogData,
-} from '../dialogs/movie-details-dialog/movie-details-dialog.component';
-import { SeriesDetailsDialogComponent } from '../dialogs/series-details-dialog/series-details-dialog.component';
-import type { SeriesDetailsDialogData } from '../dialogs/series-details-dialog/series-details-dialog.component';
+} from '../dialogs/media-details-dialog/media-details-dialog.component';
 
 /** Quantidade de populares exibida na home (TOTALPRINCIPAL do legado). */
 const TOTAL_POPULARES = 4;
@@ -117,20 +115,20 @@ export class HomeComponent implements OnInit {
   }
 
   protected verTodosFilmes(): void {
-    void this.router.navigate(['/movies']);
+    void this.router.navigate(['/media', 'movies']);
   }
 
   protected verTodasSeries(): void {
-    void this.router.navigate(['/series']);
+    void this.router.navigate(['/media', 'series']);
   }
 
   protected abrirFilme(filme: MovieDto): void {
     const ref = this.dialog.open<
-      MovieDetailsDialogComponent,
-      MovieDetailsDialogData,
+      MediaDetailsDialogComponent,
+      MediaDetailsDialogData,
       MediaDetailsDialogResult
-    >(MovieDetailsDialogComponent, {
-      data: { movieId: filme.id },
+    >(MediaDetailsDialogComponent, {
+      data: { kind: 'movies', id: filme.id },
       width: '900px',
       maxWidth: '95vw',
       autoFocus: false,
@@ -145,11 +143,11 @@ export class HomeComponent implements OnInit {
 
   protected abrirSerie(serie: SeriesDto): void {
     const ref = this.dialog.open<
-      SeriesDetailsDialogComponent,
-      SeriesDetailsDialogData,
+      MediaDetailsDialogComponent,
+      MediaDetailsDialogData,
       MediaDetailsDialogResult
-    >(SeriesDetailsDialogComponent, {
-      data: { seriesId: serie.id },
+    >(MediaDetailsDialogComponent, {
+      data: { kind: 'series', id: serie.id },
       width: '900px',
       maxWidth: '95vw',
       autoFocus: false,

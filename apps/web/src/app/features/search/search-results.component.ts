@@ -9,13 +9,11 @@ import { SearchApiService } from '../../core/api/search-api.service';
 import { LEGACY_MESSAGES } from '../../core/legacy-messages';
 import { MediaCardComponent } from '../../shared/media-card/media-card.component';
 import { caminhoImagemFilme, caminhoImagemSerie, formatNumber } from '../../shared/utils/format';
-import { MovieDetailsDialogComponent } from '../dialogs/movie-details-dialog/movie-details-dialog.component';
+import { MediaDetailsDialogComponent } from '../dialogs/media-details-dialog/media-details-dialog.component';
 import type {
+  MediaDetailsDialogData,
   MediaDetailsDialogResult,
-  MovieDetailsDialogData,
-} from '../dialogs/movie-details-dialog/movie-details-dialog.component';
-import { SeriesDetailsDialogComponent } from '../dialogs/series-details-dialog/series-details-dialog.component';
-import type { SeriesDetailsDialogData } from '../dialogs/series-details-dialog/series-details-dialog.component';
+} from '../dialogs/media-details-dialog/media-details-dialog.component';
 
 /**
  * Tela "Catalogo - Resultados da Pesquisa" (DetalhesPesquisa):
@@ -84,11 +82,11 @@ export class SearchResultsComponent {
 
   protected abrirFilme(filme: MovieDto): void {
     const ref = this.dialog.open<
-      MovieDetailsDialogComponent,
-      MovieDetailsDialogData,
+      MediaDetailsDialogComponent,
+      MediaDetailsDialogData,
       MediaDetailsDialogResult
-    >(MovieDetailsDialogComponent, {
-      data: { movieId: filme.id },
+    >(MediaDetailsDialogComponent, {
+      data: { kind: 'movies', id: filme.id },
       width: '900px',
       maxWidth: '95vw',
       autoFocus: false,
@@ -105,11 +103,11 @@ export class SearchResultsComponent {
 
   protected abrirSerie(serie: SeriesDto): void {
     const ref = this.dialog.open<
-      SeriesDetailsDialogComponent,
-      SeriesDetailsDialogData,
+      MediaDetailsDialogComponent,
+      MediaDetailsDialogData,
       MediaDetailsDialogResult
-    >(SeriesDetailsDialogComponent, {
-      data: { seriesId: serie.id },
+    >(MediaDetailsDialogComponent, {
+      data: { kind: 'series', id: serie.id },
       width: '900px',
       maxWidth: '95vw',
       autoFocus: false,

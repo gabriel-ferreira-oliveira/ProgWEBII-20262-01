@@ -9,20 +9,15 @@
       >
         Inicio
       </a>
-      <a
-        class="btn-ceviu btn-ceviu--secundario shell__nav-item"
-        routerLink="/movies"
-        routerLinkActive="shell__nav-item--ativo"
-      >
-        Filmes
-      </a>
-      <a
-        class="btn-ceviu btn-ceviu--secundario shell__nav-item"
-        routerLink="/series"
-        routerLinkActive="shell__nav-item--ativo"
-      >
-        Series
-      </a>
+      @for (tipo of tipos; track tipo.metadados.key) {
+        <a
+          class="btn-ceviu btn-ceviu--secundario shell__nav-item"
+          [routerLink]="['/media', tipo.metadados.key]"
+          routerLinkActive="shell__nav-item--ativo"
+        >
+          {{ tipo.metadados.navLabel }}
+        </a>
+      }
       <a
         class="btn-ceviu btn-ceviu--secundario shell__nav-item"
         routerLink="/profiles"
