@@ -6,16 +6,21 @@
  * qualquer lugar. O token `DATABASE_FILE` existe para os testes apontarem para `:memory:`;
  * o `DatabaseCloser` fecha a conexão no shutdown.
  *
+ * A criação do `Database` aplica as migrations SQL pendentes pelo `MigrationRunner` (T5.11) —
+ * substitui o `migrationsRun: true` do TypeORM e é idempotente com ele (mesma tabela
+ * `migrations`, mesmo nome/timestamp registrados).
+ *
  * `forFeature([...classes])` registra um `BaseRepository<T>` por classe **no token da própria
- * classe** — os serviços injetam `@Inject(Movie) movies: BaseRepository<Movie>` (a troca por
- * serviço acontece em T5.9.5+; aqui só a infraestrutura).
+ * classe** — os serviços injetam `@Inject(Movie) movies: BaseRepository<Movie>`.
  */
 import { Global, Injectable, Module } from '@nestjs/common';
 import type { DynamicModule, OnModuleDestroy, Provider } from '@nestjs/common';
 import { databasePath } from '../../common/paths';
+import { sqlMigrations } from '../../database/migrations/sql-migrations';
 import { BaseRepository } from './base-repository';
 import { Database } from './database';
 import type { EntityClass } from './hydrate';
+import { MigrationRunner } from './migration-runner';
 
 /** Caminho do arquivo SQLite (sobrescrito nos testes por `:memory:`). */
 export const DATABASE_FILE = 'DATABASE_FILE';
@@ -39,7 +44,11 @@ class MiniOrmFeatureModule {}
     { provide: DATABASE_FILE, useFactory: databasePath },
     {
       provide: Database,
-      useFactory: (file: string): Database => new Database(file),
+      useFactory: (file: string): Database => {
+        const database = new Database(file);
+        new MigrationRunner(database).run(sqlMigrations);
+        return database;
+      },
       inject: [DATABASE_FILE],
     },
     DatabaseCloser,

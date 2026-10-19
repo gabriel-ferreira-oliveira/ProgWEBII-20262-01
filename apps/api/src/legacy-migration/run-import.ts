@@ -3,7 +3,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
-import { AppDataSource } from '../database/data-source';
+import { BaseRepository } from '../framework/orm/base-repository';
+import { Database } from '../framework/orm/database';
+import { MigrationRunner } from '../framework/orm/migration-runner';
+import { sqlMigrations } from '../database/migrations/sql-migrations';
 import {
   Favorite,
   Movie,
@@ -75,10 +78,15 @@ async function main(): Promise<void> {
     profiles: readLegacyFile('Perfil.txt'),
   });
 
-  if (!AppDataSource.isInitialized) {
-    await AppDataSource.initialize();
-  }
-  await AppDataSource.runMigrations();
+  const database = new Database(databasePath());
+  new MigrationRunner(database).run(sqlMigrations);
+
+  const moviesRepo = new BaseRepository(database, Movie);
+  const seriesRepo = new BaseRepository(database, Series);
+  const usersRepo = new BaseRepository(database, User);
+  const watchedMoviesRepo = new BaseRepository(database, WatchedMovie);
+  const watchedSeriesRepo = new BaseRepository(database, WatchedSeries);
+  const favoritesRepo = new BaseRepository(database, Favorite);
 
   const warnings: string[] = [];
   const reconciliation = emptyReconciliation();
@@ -133,18 +141,31 @@ async function main(): Promise<void> {
   const orphanFavoriteTitles = new Set<string>();
   const ambiguousFavoriteTitles = new Set<string>();
 
-  await AppDataSource.transaction(async (manager) => {
-    await manager.getRepository(Favorite).clear();
-    await manager.getRepository(WatchedMovie).clear();
-    await manager.getRepository(WatchedSeries).clear();
-    await manager.getRepository(User).clear();
-    await manager.getRepository(Movie).clear();
-    await manager.getRepository(Series).clear();
+  // Bcrypt e assincrono e a transacao do mini-ORM e sincrona: os hashes saem antes.
+  const passwordHashByKey = new Map<string, string>();
+  for (const key of allKeys) {
+    const credential = credentialsByEmail.get(key);
+    if (credential === undefined) {
+      const email = profilesByEmail.get(key)?.email ?? key;
+      warnings.push(`Usuario "${email}" sem credencial em Usuarios.txt; senha aleatoria definida.`);
+      passwordHashByKey.set(key, await bcrypt.hash(randomUUID(), rounds));
+    } else {
+      passwordHashByKey.set(key, await bcrypt.hash(credential.password, rounds));
+    }
+    passwordsHashed += 1;
+  }
 
-    const movieRepo = manager.getRepository(Movie);
-    await movieRepo.save(
-      parsed.movies.map((movie) =>
-        movieRepo.create({
+  database.transaction(() => {
+    favoritesRepo.clear();
+    watchedMoviesRepo.clear();
+    watchedSeriesRepo.clear();
+    usersRepo.clear();
+    moviesRepo.clear();
+    seriesRepo.clear();
+
+    for (const movie of parsed.movies) {
+      moviesRepo.insert(
+        Object.assign(new Movie(), {
           id: movie.id,
           title: movie.title,
           genre: movie.genre,
@@ -152,13 +173,12 @@ async function main(): Promise<void> {
           year: movie.year,
           durationMin: movie.durationMin,
         }),
-      ),
-    );
+      );
+    }
 
-    const seriesRepo = manager.getRepository(Series);
-    await seriesRepo.save(
-      parsed.series.map((serie) =>
-        seriesRepo.create({
+    for (const serie of parsed.series) {
+      seriesRepo.insert(
+        Object.assign(new Series(), {
           id: serie.id,
           title: serie.title,
           genre: serie.genre,
@@ -168,30 +188,19 @@ async function main(): Promise<void> {
           episodes: serie.episodes,
           season: 0,
         }),
-      ),
-    );
+      );
+    }
 
-    const userRepo = manager.getRepository(User);
     const userIdByEmail = new Map<string, number>();
     for (const key of allKeys) {
       const profile = profilesByEmail.get(key);
       const credential = credentialsByEmail.get(key);
       const email = profile?.email ?? credential?.email ?? key;
 
-      let passwordHash: string;
-      if (credential) {
-        passwordHash = await bcrypt.hash(credential.password, rounds);
-        passwordsHashed += 1;
-      } else {
-        passwordHash = await bcrypt.hash(randomUUID(), rounds);
-        passwordsHashed += 1;
-        warnings.push(`Usuario "${email}" sem credencial em Usuarios.txt; senha aleatoria definida.`);
-      }
-
-      const saved = await userRepo.save(
-        userRepo.create({
+      const saved = usersRepo.insert(
+        Object.assign(new User(), {
           email,
-          passwordHash,
+          passwordHash: passwordHashByKey.get(key) ?? '',
           name: profile?.name ?? email,
           country: profile?.country ?? null,
           age: profile?.age ?? null,
@@ -203,10 +212,6 @@ async function main(): Promise<void> {
       );
       userIdByEmail.set(key, saved.id);
     }
-
-    const watchedMovieRepo = manager.getRepository(WatchedMovie);
-    const watchedSeriesRepo = manager.getRepository(WatchedSeries);
-    const favoriteRepo = manager.getRepository(Favorite);
 
     for (const profile of parsed.profiles) {
       const userId = userIdByEmail.get(profile.email.toLowerCase());
@@ -221,14 +226,16 @@ async function main(): Promise<void> {
           if (resolved === undefined) {
             orphanMovieTitles.add(title.trim());
           }
-          return watchedMovieRepo.create({
+          return Object.assign(new WatchedMovie(), {
             userId,
             movieId: resolved ?? null,
             titleSnapshot: title,
             position,
           });
         });
-        await watchedMovieRepo.save(rows);
+        for (const row of rows) {
+          watchedMoviesRepo.insert(row);
+        }
         watchedMoviesCount += rows.length;
       }
 
@@ -238,14 +245,16 @@ async function main(): Promise<void> {
           if (resolved === undefined) {
             orphanSeriesTitles.add(title.trim());
           }
-          return watchedSeriesRepo.create({
+          return Object.assign(new WatchedSeries(), {
             userId,
             seriesId: resolved ?? null,
             titleSnapshot: title,
             position,
           });
         });
-        await watchedSeriesRepo.save(rows);
+        for (const row of rows) {
+          watchedSeriesRepo.insert(row);
+        }
         watchedSeriesCount += rows.length;
       }
 
@@ -270,7 +279,7 @@ async function main(): Promise<void> {
             orphanFavoriteTitles.add(trimmed);
           }
 
-          return favoriteRepo.create({
+          return Object.assign(new Favorite(), {
             userId,
             mediaType,
             movieId: resolvedMovieId,
@@ -279,7 +288,9 @@ async function main(): Promise<void> {
             position,
           });
         });
-        await favoriteRepo.save(rows);
+        for (const row of rows) {
+          favoritesRepo.insert(row);
+        }
         favoritesCount += rows.length;
       }
     }
@@ -315,7 +326,7 @@ async function main(): Promise<void> {
   fs.writeFileSync(jsonPath, toJson(report), 'utf8');
   fs.writeFileSync(mdPath, toMarkdown(report), 'utf8');
 
-  await AppDataSource.destroy();
+  database.close();
 
   console.log('Migracao concluida.');
   console.log(`  Filmes:           ${report.counts.movies}`);

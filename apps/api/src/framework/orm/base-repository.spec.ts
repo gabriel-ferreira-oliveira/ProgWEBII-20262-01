@@ -146,6 +146,19 @@ describe('BaseRepository do mini-ORM (T5.4)', () => {
     expect(favorites.increment(99, 'position', 1)).toBe(false);
   });
 
+  it('clear apaga tudo fisicamente (inclusive soft-deletados)', () => {
+    movies.insert(makeMovie());
+    movies.delete(1);
+    favorites.insert(makeFavorite());
+
+    movies.clear();
+    favorites.clear();
+
+    expect(movies.findAll({ withDeleted: true })).toEqual([]);
+    expect(movies.count({ withDeleted: true })).toBe(0);
+    expect(favorites.count()).toBe(0);
+  });
+
   it('propriedade fora dos metadados ou direção inválida falha (whitelist)', () => {
     expect(() => movies.findAll({ where: { nome: 'X' } } as never)).toThrow(/não é coluna/);
     expect(() => movies.findAll({ order: { title: 'SIDEWAYS' } } as never)).toThrow(

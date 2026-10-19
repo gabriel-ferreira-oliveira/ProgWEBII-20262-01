@@ -79,6 +79,11 @@ export class BaseRepository<T extends object> {
     return Number(row?.total ?? 0);
   }
 
+  /** Apaga todas as linhas fisicamente (como o `clear()` do TypeORM); usado pelo import legado. */
+  clear(): void {
+    this.database.run(`DELETE FROM ${this.table.meta.table}`);
+  }
+
   /**
    * Insere a instância (colunas presentes; `undefined` fica de fora e vale o default do banco).
    * Preenche `created_at` ausente e, com `@PrimaryKey({autoIncrement})`, devolve o id gerado
