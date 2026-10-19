@@ -105,6 +105,25 @@ for (const caso of CASOS) {
       expect(textos('.card-ceviu__linha')).toEqual(caso.linhas);
     });
 
+    it('trocar o kind (navegacao Filmes <-> Series) recarrega na mesma tela', async () => {
+      await abrirLista();
+      expect(textos('.card-ceviu__titulo')).toEqual([caso.item.title]);
+
+      const outro = CASOS.find((candidato) => candidato.kind !== caso.kind);
+      if (outro === undefined) {
+        throw new Error('caso de outro tipo de midia nao encontrado');
+      }
+      fixture.componentRef.setInput('kind', outro.kind);
+      fixture.detectChanges();
+      httpMock.expectOne(outro.url).flush([outro.item]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const titulo = fixture.nativeElement.querySelector('.titulo-pagina') as HTMLElement;
+      expect(titulo.textContent?.trim()).toBe(outro.titulo);
+      expect(textos('.card-ceviu__titulo')).toEqual([outro.item.title]);
+    });
+
     it('lista vazia usa a mensagem do descritor', async () => {
       await abrirLista([]);
 
