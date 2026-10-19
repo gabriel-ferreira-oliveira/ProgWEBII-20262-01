@@ -1,14 +1,14 @@
 /**
  * Mini-ORM — provider Nest da conexão própria (T5.3) e dos repositórios por classe (T5.9.1).
  *
- * Publica `Database` (mesmo arquivo do TypeORM via `databasePath()`, com WAL e `busy_timeout`)
- * como módulo **global**: registrado uma vez no `AppModule`, o `Database` fica injetável em
- * qualquer lugar. O token `DATABASE_FILE` existe para os testes apontarem para `:memory:`;
- * o `DatabaseCloser` fecha a conexão no shutdown.
+ * Publica `Database` (mesmo arquivo SQLite do projeto via `databasePath()`, com WAL e
+ * `busy_timeout`) como módulo **global**: registrado uma vez no `AppModule`, o `Database` fica
+ * injetável em qualquer lugar. O token `DATABASE_FILE` existe para os testes apontarem para
+ * `:memory:`; o `DatabaseCloser` fecha a conexão no shutdown.
  *
  * A criação do `Database` aplica as migrations SQL pendentes pelo `MigrationRunner` (T5.11) —
- * substitui o `migrationsRun: true` do TypeORM e é idempotente com ele (mesma tabela
- * `migrations`, mesmo nome/timestamp registrados).
+ * dona do schema desde a T5.12; bancos migrados na era TypeORM já trazem a linha na tabela
+ * `migrations` e são pulados.
  *
  * `forFeature([...classes])` registra um `BaseRepository<T>` por classe **no token da própria
  * classe** — os serviços injetam `@Inject(Movie) movies: BaseRepository<Movie>`.

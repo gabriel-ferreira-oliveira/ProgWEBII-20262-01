@@ -4,26 +4,19 @@ import { createBaseRepositoryMock, createRepositoryMock } from './repository-moc
 
 describe('createRepositoryMock', () => {
   it('cria um jest.fn independente por metodo pedido', () => {
-    const repository = createRepositoryMock<Movie>('find', 'findOne', 'save');
+    const repository = createRepositoryMock<BaseRepository<Movie>>('findById', 'insert', 'update');
 
-    expect(Object.keys(repository).sort()).toEqual(['find', 'findOne', 'save']);
-    expect(jest.isMockFunction(repository.find)).toBe(true);
-    expect(jest.isMockFunction(repository.findOne)).toBe(true);
-    expect(jest.isMockFunction(repository.save)).toBe(true);
-    expect(repository.find).not.toBe(repository.findOne);
+    expect(Object.keys(repository).sort()).toEqual(['findById', 'insert', 'update']);
+    expect(jest.isMockFunction(repository.findById)).toBe(true);
+    expect(jest.isMockFunction(repository.insert)).toBe(true);
+    expect(jest.isMockFunction(repository.update)).toBe(true);
+    expect(repository.findById).not.toBe(repository.insert);
   });
 
   it('nao inclui metodos que nao foram pedidos', () => {
-    const repository = createRepositoryMock<Movie>('find');
+    const repository = createRepositoryMock<BaseRepository<Movie>>('findById');
 
-    expect(Object.keys(repository)).toEqual(['find']);
-  });
-
-  it('aceita um repositorio de outro tipo (BaseRepository do mini-ORM)', () => {
-    const repository = createRepositoryMock<Movie, BaseRepository<Movie>>('insert', 'count');
-
-    expect(Object.keys(repository).sort()).toEqual(['count', 'insert']);
-    expect(jest.isMockFunction(repository.insert)).toBe(true);
+    expect(Object.keys(repository)).toEqual(['findById']);
   });
 
   it('createBaseRepositoryMock e o atalho tipado para o BaseRepository', () => {

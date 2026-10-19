@@ -1,14 +1,14 @@
-import { DataSource } from 'typeorm';
 import { Favorite as FavoriteEntity } from '../../database/entities/favorite.entity';
 import { Movie as MovieEntity } from '../../database/entities/movie.entity';
 import { Series as SeriesEntity } from '../../database/entities/series.entity';
 import { User as UserEntity } from '../../database/entities/user.entity';
 import { WatchedMovie as WatchedMovieEntity } from '../../database/entities/watched-movie.entity';
 import { WatchedSeries as WatchedSeriesEntity } from '../../database/entities/watched-series.entity';
-import { InitialSchema1730000000000 } from '../../database/migrations/1730000000000-InitialSchema';
+import { sqlMigrations } from '../../database/migrations/sql-migrations';
 import { createTableSql } from './create-table-sql';
 import { Database } from './database';
 import { Column, Entity, primaryKeyOf, requireEntityMeta } from './entity';
+import { MigrationRunner } from './migration-runner';
 
 /** As 6 tabelas do schema já são as classes reais (T5.9.2–T5.9.8); só a classe-sem-chave fica aqui. */
 
@@ -47,29 +47,17 @@ describe('createTableSql (T5.5)', () => {
     ['favorites', FavoriteEntity],
   ];
 
-  let migrated: DataSource;
+  /** Schema real: as migrations aplicadas pelo runner do mini-ORM (T5.12; antes vinha do TypeORM). */
+  let migrated: Database;
   let db: Database;
 
-  beforeAll(async () => {
-    migrated = new DataSource({
-      type: 'better-sqlite3',
-      database: ':memory:',
-      entities: [
-        UserEntity,
-        MovieEntity,
-        SeriesEntity,
-        WatchedMovieEntity,
-        WatchedSeriesEntity,
-        FavoriteEntity,
-      ],
-      migrations: [InitialSchema1730000000000],
-    });
-    await migrated.initialize();
-    await migrated.runMigrations();
+  beforeAll(() => {
+    migrated = new Database(':memory:');
+    new MigrationRunner(migrated).run(sqlMigrations);
   });
 
-  afterAll(async () => {
-    await migrated.destroy();
+  afterAll(() => {
+    migrated.close();
   });
 
   beforeEach(() => {
@@ -86,7 +74,7 @@ describe('createTableSql (T5.5)', () => {
       db.run(createTableSql(entityClass));
 
       const custom = normalize(db.all(`PRAGMA table_info("${table}")`) as unknown as ColumnInfo[]);
-      const real = normalize((await migrated.query(`PRAGMA table_info("${table}")`)) as ColumnInfo[]);
+      const real = normalize(migrated.all(`PRAGMA table_info("${table}")`) as unknown as ColumnInfo[]);
 
       expect(custom).toEqual(real);
     },

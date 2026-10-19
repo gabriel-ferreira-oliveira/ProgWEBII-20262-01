@@ -1,13 +1,10 @@
-import type { ObjectLiteral, Repository } from 'typeorm';
 import type { BaseRepository } from '../framework/orm/base-repository';
 
 /**
  * Mock de repositório para os specs: cada metodo pedido vira um `jest.fn()`
- * proprio; o nome e conferido contra a interface real (por padrao o
- * `Repository<T>` do TypeORM; a partir da T5.9.1 tambem aceita o
- * `BaseRepository<T>` do mini-ORM via segundo parametro).
+ * proprio; o nome e conferido contra a interface real do tipo informado.
  */
-export function createRepositoryMock<T extends ObjectLiteral, TRepository = Repository<T>>(
+export function createRepositoryMock<TRepository>(
   ...methods: (keyof TRepository & string)[]
 ): Record<string, jest.Mock> {
   const mock: Record<string, jest.Mock> = {};
@@ -18,8 +15,8 @@ export function createRepositoryMock<T extends ObjectLiteral, TRepository = Repo
 }
 
 /** Atalho tipado para os specs dos servicos migrados: `createBaseRepositoryMock<Movie>(...)`. */
-export function createBaseRepositoryMock<T extends ObjectLiteral>(
+export function createBaseRepositoryMock<T extends object>(
   ...methods: (keyof BaseRepository<T> & string)[]
 ): Record<string, jest.Mock> {
-  return createRepositoryMock<T, BaseRepository<T>>(...methods);
+  return createRepositoryMock<BaseRepository<T>>(...methods);
 }

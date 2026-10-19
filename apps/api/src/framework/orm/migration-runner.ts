@@ -1,18 +1,17 @@
 /**
  * Mini-ORM — runner mínimo de migrations SQL (T5.11).
  *
- * Substitui o `migrationsRun: true` do TypeORM: lê/aplica as migrations SQL do projeto e mantém
- * a tabela `migrations` no **mesmo formato do TypeORM** (`timestamp` + `name`, ex.:
- * `1730000000000` / `InitialSchema1730000000000`). Assim um banco já migrado pelo TypeORM é
- * reconhecido como migrado (e vice-versa) durante a coexistência até a T5.12.
+ * Dona do schema desde a T5.12 (substituiu o `migrationsRun: true` do TypeORM): lê/aplica as
+ * migrations SQL do projeto e mantém a tabela `migrations` no **mesmo formato da era TypeORM**
+ * (`timestamp` + `name`, ex.: `1730000000000` / `InitialSchema1730000000000`) — bancos já
+ * migrados por ele são reconhecidos e pulados.
  *
  * Cada migration roda num commit próprio (DDL + registro juntos): se falhar no meio, o rollback
- * desfaz as tabelas criadas e o registro. A tabela `migrations` é criada com `IF NOT EXISTS`
- * (idempotente com a que o TypeORM cria).
+ * desfaz as tabelas criadas e o registro. A tabela `migrations` é criada com `IF NOT EXISTS`.
  */
 import type { Database } from './database';
 
-/** Migration SQL pura: os comandos que o mini-ORM executa (e o TypeORM legado replica até a T5.12). */
+/** Migration SQL pura: os comandos que o mini-ORM executa e o registro que grava. */
 export interface OrmMigration {
   readonly name: string;
   readonly timestamp: number;

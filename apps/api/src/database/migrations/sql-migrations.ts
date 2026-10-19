@@ -1,10 +1,9 @@
 /**
- * Migrations SQL do projeto — fonte única (T5.11).
+ * Migrations SQL do projeto — fonte única (T5.11; dona do schema desde a T5.12).
  *
- * O runner do mini-ORM (`MigrationRunner`) aplica estes comandos e registra a migration na tabela
- * `migrations`; até a T5.12 a classe do TypeORM (`InitialSchema1730000000000`, em
- * `1730000000000-InitialSchema.ts`) replica exatamente os mesmos comandos para o CLI dele.
- * Os nomes/timestamps são os do TypeORM para que bancos já migrados por ele sejam reconhecidos.
+ * O `MigrationRunner` do mini-ORM aplica estes comandos e registra a migration na tabela
+ * `migrations`. Nomes/timestamps são os da era TypeORM (`InitialSchema1730000000000`) de
+ * propósito: bancos já criados por ele são reconhecidos como migrados e o runner pula.
  */
 import type { OrmMigration } from '../../framework/orm/migration-runner';
 
