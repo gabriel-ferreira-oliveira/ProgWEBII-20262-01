@@ -3,8 +3,40 @@ import { Injectable, inject } from '@angular/core';
 import type { SeriesDto, SeriesWatchResultDto, UpdateSynopsisRequestDto } from '@ceviu/shared';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../api-config';
+import { LEGACY_MESSAGES } from '../legacy-messages';
+import { MediaKind } from '../media/media-kind';
+import { caminhoImagemSerie, formatNumber, formatText } from '../../shared/utils/format';
 
 /** Cliente HTTP do catalogo de series (`/series`). */
+@MediaKind({
+  key: 'series',
+  navLabel: 'Series',
+  pageTitle: 'Series',
+  listTitle: 'Todas as Séries',
+  listEmptyMessage: 'Nenhuma serie encontrada.',
+  listErrorMessage: 'Falha ao carregar as series.',
+  popularTitle: 'Series Populares',
+  searchSectionLabel: 'Séries',
+  searchCountLabel: 'séries',
+  dialogTitlePrefix: 'Detalhes da Serie',
+  dialogLoadError: 'Falha ao carregar a serie.',
+  form: 'series-synopsis',
+  deleteOkMessage: LEGACY_MESSAGES.serieRemovida,
+  deleteErrorMessage: 'Falha ao remover Serie!',
+  imagePath: caminhoImagemSerie,
+  cardLines: (serie: SeriesDto) => [
+    `Ano: ${formatNumber(serie.year)}`,
+    `Gênero: ${formatText(serie.genre)}`,
+  ],
+  searchLine: (serie: SeriesDto) => [
+    `(${formatNumber(serie.year)} - ${serie.season} temp.)`,
+  ],
+  detailLines: (serie: SeriesDto) => [
+    { rotulo: 'Ano', valor: formatNumber(serie.year) },
+    { rotulo: 'Duração', valor: `${formatNumber(serie.durationMin)} minutos` },
+    { rotulo: 'Gênero', valor: formatText(serie.genre) },
+  ],
+})
 @Injectable({ providedIn: 'root' })
 export class SeriesApiService {
   private readonly http = inject(HttpClient);
