@@ -1,0 +1,60 @@
+<h2 mat-dialog-title class="detalhe-titulo">{{ titulo() }}</h2>
+
+@if (midia.isLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<mat-dialog-content class="detalhe">
+  @if (midia.error()) {
+    <p class="erro-carregamento">
+      {{ erroCarregamento() }}
+      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="recarregar()">
+        Tentar novamente
+      </button>
+    </p>
+  } @else if (midia.value(); as item) {
+    <div class="detalhe__imagem">
+      <app-media-image [path]="caminhoImagem()" [alt]="item.title" [width]="250" [height]="350" />
+    </div>
+
+    <div class="detalhe__info">
+      <h3 class="detalhe__titulo">{{ item.title }}</h3>
+      @for (linha of linhasDetalhe(item); track linha.rotulo) {
+        <p class="detalhe__linha">{{ linha.rotulo }}: {{ linha.valor }}</p>
+      }
+
+      @if (form(); as formulario) {
+        <div [formGroup]="formulario">
+          @for (campo of campos(); track campo.name) {
+            <h4 class="detalhe__rotulo">{{ campo.label }}:</h4>
+            <textarea
+              class="campo-ceviu detalhe__sinopse"
+              rows="7"
+              [formControlName]="campo.name"
+            ></textarea>
+          }
+        </div>
+      }
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions class="detalhe__acoes" align="start">
+  <button class="btn-ceviu detalhe__btn-preto" type="button" [disabled]="ocupado()" (click)="favoritar()">
+    Favoritar
+  </button>
+  <button
+    class="btn-ceviu btn-ceviu--destaque"
+    type="button"
+    [disabled]="ocupado()"
+    (click)="assistir()"
+  >
+    Marcar como Assistido
+  </button>
+  <button class="btn-ceviu btn-ceviu--perigo" type="button" [disabled]="ocupado()" (click)="deletar()">
+    Deletar
+  </button>
+  <button class="btn-ceviu btn-ceviu--salvar" type="button" [disabled]="salvando()" (click)="salvar()">
+    Salvar
+  </button>
+</mat-dialog-actions>
