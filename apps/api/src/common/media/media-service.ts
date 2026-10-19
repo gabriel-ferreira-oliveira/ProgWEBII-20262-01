@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import type { BaseRepository } from '../../framework/orm/base-repository';
+import type { Database } from '../../framework/orm/database';
 import type { Favorite } from '../../database/entities/favorite.entity';
 import type { User } from '../../database/entities/user.entity';
 
@@ -21,6 +22,8 @@ export interface MediaRuntime<
   TWatchResult,
   TWatched extends WatchedEntryShape,
 > {
+  /** Conexao do mini-ORM: envolve a sequencia escrita do watch/favorite numa transacao (T5.10). */
+  readonly database: Database;
   readonly repository: BaseRepository<TEntity>;
   readonly toDto: (entity: TEntity) => TDto;
   readonly notFoundMessage: string;
@@ -55,25 +58,17 @@ export class MediaService<
   }
 
   async findOne(id: number): Promise<TDto> {
-    return this.runtime.toDto(await this.findEntity(id));
-  }
-
-  async findEntity(id: number): Promise<TEntity> {
-    const entity = this.runtime.repository.findById(id);
-    if (entity === undefined) {
-      throw new NotFoundException(this.runtime.notFoundMessage);
-    }
-    return entity;
+    return this.runtime.toDto(this.requireEntity(id));
   }
 
   async updateSynopsis(id: number, synopsis: string): Promise<TDto> {
-    await this.findEntity(id);
+    this.requireEntity(id);
     this.runtime.saveSynopsis(id, synopsis);
-    return this.runtime.toDto(await this.findEntity(id));
+    return this.runtime.toDto(this.requireEntity(id));
   }
 
   async remove(id: number): Promise<void> {
-    await this.findEntity(id);
+    this.requireEntity(id);
     this.runtime.repository.delete(id);
   }
 
@@ -85,29 +80,43 @@ export class MediaService<
     return this.recordWatch(id, userId, { favorite: true });
   }
 
-  private async recordWatch(id: number, userId: number, options: { favorite: boolean }): Promise<TWatchResult> {
+  /**
+   * Historico (+ favorito) + incremento de minutos num unico commit: se qualquer escrita
+   * falhar no meio, o rollback do SQLite desfaz todas (T5.10).
+   */
+  private recordWatch(id: number, userId: number, options: { favorite: boolean }): TWatchResult {
     const watch = this.runtime.watch;
-    const entity = await this.findEntity(id);
-    const user = await this.findUser(userId);
+    return this.runtime.database.transaction(() => {
+      const entity = this.requireEntity(id);
+      const user = this.requireUser(userId);
 
-    const position = watch.watchedRepository.count({ where: { userId } });
-    watch.watchedRepository.insert(watch.watchedEntryOf(entity, userId, position));
+      const position = watch.watchedRepository.count({ where: { userId } });
+      watch.watchedRepository.insert(watch.watchedEntryOf(entity, userId, position));
 
-    const countTime = options.favorite ? watch.countTimeOnFavorite : true;
-    const minutes = countTime ? (entity.durationMin ?? 0) : 0;
-    if (minutes > 0) {
-      watch.usersRepository.increment(userId, watch.counterField, minutes);
-    }
+      const countTime = options.favorite ? watch.countTimeOnFavorite : true;
+      const minutes = countTime ? (entity.durationMin ?? 0) : 0;
+      if (minutes > 0) {
+        watch.usersRepository.increment(userId, watch.counterField, minutes);
+      }
 
-    if (options.favorite) {
-      const favoritePosition = watch.favoritesRepository.count({ where: { userId } });
-      watch.favoritesRepository.insert(watch.favoriteEntryOf(entity, userId, favoritePosition));
-    }
+      if (options.favorite) {
+        const favoritePosition = watch.favoritesRepository.count({ where: { userId } });
+        watch.favoritesRepository.insert(watch.favoriteEntryOf(entity, userId, favoritePosition));
+      }
 
-    return watch.toResult(watch.counterOf(user) + minutes);
+      return watch.toResult(watch.counterOf(user) + minutes);
+    });
   }
 
-  private async findUser(userId: number): Promise<User> {
+  private requireEntity(id: number): TEntity {
+    const entity = this.runtime.repository.findById(id);
+    if (entity === undefined) {
+      throw new NotFoundException(this.runtime.notFoundMessage);
+    }
+    return entity;
+  }
+
+  private requireUser(userId: number): User {
     const user = this.runtime.watch.usersRepository.findById(userId);
     if (user === undefined) {
       throw new NotFoundException('Usuario nao encontrado');

@@ -3,6 +3,7 @@ import type { SeriesDto, SeriesWatchResultDto } from '@ceviu/shared';
 import { MediaService } from '../../common/media/media-service';
 import { toSeriesDto } from '../../common/mappers';
 import { BaseRepository } from '../../framework/orm/base-repository';
+import { Database } from '../../framework/orm/database';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { Series } from '../../database/entities/series.entity';
 import { User } from '../../database/entities/user.entity';
@@ -13,6 +14,8 @@ export class SeriesService {
   private readonly media: MediaService<Series, SeriesDto, SeriesWatchResultDto, WatchedSeries>;
 
   constructor(
+    @Inject(Database)
+    database: Database,
     @Inject(Series)
     series: BaseRepository<Series>,
     @Inject(User)
@@ -23,6 +26,7 @@ export class SeriesService {
     favorites: BaseRepository<Favorite>,
   ) {
     this.media = new MediaService<Series, SeriesDto, SeriesWatchResultDto, WatchedSeries>({
+      database,
       repository: series,
       toDto: toSeriesDto,
       notFoundMessage: 'Serie nao encontrada',

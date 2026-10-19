@@ -4,6 +4,7 @@ import { Favorite } from '../../database/entities/favorite.entity';
 import { Series } from '../../database/entities/series.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedSeries } from '../../database/entities/watched-series.entity';
+import { Database } from '../../framework/orm/database';
 import { makeSeries, makeUser } from '../../testing/factories';
 import { createBaseRepositoryMock } from '../../testing/repository-mock';
 import { SeriesService } from './series.service';
@@ -15,12 +16,15 @@ describe('SeriesService', () => {
   const usersRepository = createBaseRepositoryMock<User>('findById', 'increment');
   const watchedSeriesRepository = createBaseRepositoryMock<WatchedSeries>('count', 'insert');
   const favoritesRepository = createBaseRepositoryMock<Favorite>('count', 'insert');
+  const databaseTransaction = jest.fn((fn: () => unknown) => fn());
+  const database = { transaction: databaseTransaction } as unknown as Database;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
       providers: [
         SeriesService,
+        { provide: Database, useValue: database },
         { provide: Series, useValue: seriesRepository },
         { provide: User, useValue: usersRepository },
         { provide: WatchedSeries, useValue: watchedSeriesRepository },
@@ -38,6 +42,7 @@ describe('SeriesService', () => {
 
     const result = await service.watch(1, 3);
 
+    expect(databaseTransaction).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ watchedSeriesMinutes: 55 });
     expect(watchedSeriesRepository.insert).toHaveBeenCalledWith({
       userId: 3,

@@ -4,6 +4,7 @@ import { Favorite } from '../../database/entities/favorite.entity';
 import { Movie } from '../../database/entities/movie.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
+import { Database } from '../../framework/orm/database';
 import { makeFavorite, makeMovie, makeUser, makeWatchedMovie } from '../../testing/factories';
 import { createBaseRepositoryMock } from '../../testing/repository-mock';
 import { MoviesService } from './movies.service';
@@ -15,12 +16,15 @@ describe('MoviesService', () => {
   const usersRepository = createBaseRepositoryMock<User>('findById', 'increment');
   const watchedMoviesRepository = createBaseRepositoryMock<WatchedMovie>('count', 'insert');
   const favoritesRepository = createBaseRepositoryMock<Favorite>('count', 'insert');
+  const databaseTransaction = jest.fn((fn: () => unknown) => fn());
+  const database = { transaction: databaseTransaction } as unknown as Database;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
       providers: [
         MoviesService,
+        { provide: Database, useValue: database },
         { provide: Movie, useValue: moviesRepository },
         { provide: User, useValue: usersRepository },
         { provide: WatchedMovie, useValue: watchedMoviesRepository },
@@ -55,6 +59,7 @@ describe('MoviesService', () => {
 
     const result = await service.watch(1, 7);
 
+    expect(databaseTransaction).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ watchedMovieMinutes: 146 });
     expect(watchedMoviesRepository.insert).toHaveBeenCalledWith({
       userId: 7,

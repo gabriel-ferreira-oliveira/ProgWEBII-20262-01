@@ -1,8 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import type { MovieDto, MovieWatchResultDto } from '@ceviu/shared';
-import type { BaseRepository } from '../../framework/orm/base-repository';
+import { BaseRepository } from '../../framework/orm/base-repository';
+import { createTableSql } from '../../framework/orm/create-table-sql';
+import { Database } from '../../framework/orm/database';
 import { Favorite } from '../../database/entities/favorite.entity';
-import type { Movie } from '../../database/entities/movie.entity';
+import { Movie } from '../../database/entities/movie.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 import { makeMovie, makeUser } from '../../testing/factories';
@@ -15,9 +17,12 @@ describe('MediaService', () => {
   const usersRepository = createBaseRepositoryMock<User>('findById', 'increment');
   const watchedRepository = createBaseRepositoryMock<WatchedMovie>('count', 'insert');
   const favoritesRepository = createBaseRepositoryMock<Favorite>('count', 'insert');
+  const databaseTransaction = jest.fn((fn: () => unknown) => fn());
+  const database = { transaction: databaseTransaction } as unknown as Database;
 
   function createService(countTimeOnFavorite: boolean): MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie> {
     return new MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie>({
+      database,
       repository: repository as unknown as BaseRepository<Movie>,
       toDto: toMovieDto,
       notFoundMessage: 'Filme nao encontrado',
@@ -136,6 +141,7 @@ describe('MediaService', () => {
 
     const result = await service.watch(1, 7);
 
+    expect(databaseTransaction).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ watchedMovieMinutes: 146 });
     expect(watchedRepository.insert).toHaveBeenCalledWith({
       userId: 7,
@@ -205,5 +211,97 @@ describe('MediaService', () => {
 
     await expect(service.watch(1, 99)).rejects.toThrow('Usuario nao encontrado');
     expect(watchedRepository.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe('MediaService — transacao real no SQLite (:memory:, T5.10)', () => {
+  let database: Database;
+  let moviesRepository: BaseRepository<Movie>;
+  let usersRepository: BaseRepository<User>;
+  let watchedRepository: BaseRepository<WatchedMovie>;
+  let favoritesRepository: BaseRepository<Favorite>;
+  let service: MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie>;
+
+  beforeEach(() => {
+    database = new Database(':memory:');
+    database.run(createTableSql(User));
+    database.run(createTableSql(Movie));
+    database.run(createTableSql(WatchedMovie));
+    database.run(createTableSql(Favorite));
+    moviesRepository = new BaseRepository(database, Movie);
+    usersRepository = new BaseRepository(database, User);
+    watchedRepository = new BaseRepository(database, WatchedMovie);
+    favoritesRepository = new BaseRepository(database, Favorite);
+
+    usersRepository.insert(Object.assign(new User(), { email: 'a@a.com', passwordHash: 'x', name: 'A' }));
+    moviesRepository.insert(
+      Object.assign(new Movie(), {
+        id: 1,
+        title: 'Matriz',
+        genre: 'Ficcao',
+        synopsis: 'S',
+        year: 1999,
+        durationMin: 136,
+      }),
+    );
+
+    service = new MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie>({
+      database,
+      repository: moviesRepository,
+      toDto: toMovieDto,
+      notFoundMessage: 'Filme nao encontrado',
+      saveSynopsis: (id, synopsis) => {
+        moviesRepository.update(id, { synopsis });
+      },
+      watch: {
+        usersRepository,
+        watchedRepository,
+        favoritesRepository,
+        watchedEntryOf: (movie, userId, position) =>
+          Object.assign(new WatchedMovie(), {
+            userId,
+            movieId: movie.id,
+            titleSnapshot: movie.title,
+            position,
+          }),
+        favoriteEntryOf: (movie, userId, position) =>
+          Object.assign(new Favorite(), {
+            userId,
+            mediaType: 'movie',
+            movieId: movie.id,
+            seriesId: null,
+            titleSnapshot: movie.title,
+            position,
+          }),
+        counterField: 'watchedMovieMinutes',
+        counterOf: (user) => user.watchedMovieMinutes,
+        toResult: (watchedMovieMinutes) => ({ watchedMovieMinutes }),
+        countTimeOnFavorite: true,
+      },
+    });
+  });
+
+  afterEach(() => {
+    database.close();
+  });
+
+  it('watch confirma historico e minutos num unico commit', async () => {
+    const result = await service.watch(1, 1);
+
+    expect(result).toEqual({ watchedMovieMinutes: 136 });
+    expect(watchedRepository.count()).toBe(1);
+    expect(usersRepository.findById(1)?.watchedMovieMinutes).toBe(136);
+  });
+
+  it('falha no meio do favorite desfaz historico, favorito e minutos (rollback)', async () => {
+    jest.spyOn(usersRepository, 'increment').mockImplementation(() => {
+      throw new Error('falha forcada');
+    });
+
+    await expect(service.favorite(1, 1)).rejects.toThrow('falha forcada');
+
+    expect(watchedRepository.count()).toBe(0);
+    expect(favoritesRepository.count()).toBe(0);
+    expect(usersRepository.findById(1)?.watchedMovieMinutes).toBe(0);
   });
 });

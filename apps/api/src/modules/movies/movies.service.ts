@@ -3,6 +3,7 @@ import type { MovieDto, MovieWatchResultDto } from '@ceviu/shared';
 import { MediaService } from '../../common/media/media-service';
 import { toMovieDto } from '../../common/mappers';
 import { BaseRepository } from '../../framework/orm/base-repository';
+import { Database } from '../../framework/orm/database';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { Movie } from '../../database/entities/movie.entity';
 import { User } from '../../database/entities/user.entity';
@@ -13,6 +14,8 @@ export class MoviesService {
   private readonly media: MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie>;
 
   constructor(
+    @Inject(Database)
+    database: Database,
     @Inject(Movie)
     movies: BaseRepository<Movie>,
     @Inject(User)
@@ -23,6 +26,7 @@ export class MoviesService {
     favorites: BaseRepository<Favorite>,
   ) {
     this.media = new MediaService<Movie, MovieDto, MovieWatchResultDto, WatchedMovie>({
+      database,
       repository: movies,
       toDto: toMovieDto,
       notFoundMessage: 'Filme nao encontrado',
