@@ -1,12 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 import { WatchedSeries } from '../../database/entities/watched-series.entity';
 import { makeFavorite, makeUser, makeWatchedMovie } from '../../testing/factories';
-import { createRepositoryMock } from '../../testing/repository-mock';
+import { createBaseRepositoryMock } from '../../testing/repository-mock';
 import { UsersService } from './users.service';
 
 describe('UsersService', () => {
@@ -15,42 +14,40 @@ describe('UsersService', () => {
   const usersQueryBuilder = {
     where: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
-    getMany: jest.fn(),
+    all: jest.fn(),
   };
-  const usersRepository = createRepositoryMock<User>('findOne', 'createQueryBuilder');
-  const watchedMoviesRepository = createRepositoryMock<WatchedMovie>('find');
-  const watchedSeriesRepository = createRepositoryMock<WatchedSeries>('find');
-  const favoritesRepository = createRepositoryMock<Favorite>('find');
+  const usersRepository = createBaseRepositoryMock<User>('findById', 'query');
+  const watchedMoviesRepository = createBaseRepositoryMock<WatchedMovie>('findAll');
+  const watchedSeriesRepository = createBaseRepositoryMock<WatchedSeries>('findAll');
+  const favoritesRepository = createBaseRepositoryMock<Favorite>('findAll');
 
   beforeEach(async () => {
     jest.clearAllMocks();
     usersQueryBuilder.where.mockReturnThis();
     usersQueryBuilder.orderBy.mockReturnThis();
-    usersRepository.createQueryBuilder.mockReturnValue(usersQueryBuilder);
+    usersRepository.query.mockReturnValue(usersQueryBuilder);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: getRepositoryToken(User), useValue: usersRepository },
-        { provide: getRepositoryToken(WatchedMovie), useValue: watchedMoviesRepository },
-        { provide: getRepositoryToken(WatchedSeries), useValue: watchedSeriesRepository },
-        { provide: getRepositoryToken(Favorite), useValue: favoritesRepository },
+        { provide: User, useValue: usersRepository },
+        { provide: WatchedMovie, useValue: watchedMoviesRepository },
+        { provide: WatchedSeries, useValue: watchedSeriesRepository },
+        { provide: Favorite, useValue: favoritesRepository },
       ],
     }).compile();
     service = moduleRef.get(UsersService);
   });
 
   it('lista a comunidade excluindo o usuario logado', async () => {
-    usersQueryBuilder.getMany.mockResolvedValue([
+    usersQueryBuilder.all.mockReturnValue([
       makeUser({ id: 1, name: 'A' }),
       makeUser({ id: 2, name: 'B' }),
     ]);
 
     const result = await service.listCommunity(2);
 
-    expect(usersQueryBuilder.where).toHaveBeenCalledWith('user.id != :currentUserId', {
-      currentUserId: 2,
-    });
+    expect(usersQueryBuilder.where).toHaveBeenCalledWith('id', '<>', 2);
     expect(result).toEqual([
       { id: 1, name: 'A', age: 21 },
       { id: 2, name: 'B', age: 21 },
@@ -58,7 +55,7 @@ describe('UsersService', () => {
   });
 
   it('detalhe devolve perfil e tempos', async () => {
-    usersRepository.findOne.mockResolvedValue(
+    usersRepository.findById.mockReturnValue(
       makeUser({
         watchedMovieMinutes: 100,
         watchedSeriesMinutes: 200,
@@ -77,15 +74,15 @@ describe('UsersService', () => {
   });
 
   it('lista assistidos em ordem de posicao', async () => {
-    usersRepository.findOne.mockResolvedValue(makeUser());
-    watchedMoviesRepository.find.mockResolvedValue([
+    usersRepository.findById.mockReturnValue(makeUser());
+    watchedMoviesRepository.findAll.mockReturnValue([
       makeWatchedMovie({ position: 0, titleSnapshot: 'A' }),
       makeWatchedMovie({ id: 2, position: 1, titleSnapshot: 'B' }),
     ]);
 
     const result = await service.getWatchedMovies(1);
 
-    expect(watchedMoviesRepository.find).toHaveBeenCalledWith({
+    expect(watchedMoviesRepository.findAll).toHaveBeenCalledWith({
       where: { userId: 1 },
       order: { position: 'ASC' },
     });
@@ -93,8 +90,10 @@ describe('UsersService', () => {
   });
 
   it('favoritos mapeados com tipo de midia', async () => {
-    usersRepository.findOne.mockResolvedValue(makeUser());
-    favoritesRepository.find.mockResolvedValue([makeFavorite({ mediaType: 'series', movieId: null, seriesId: 3 })]);
+    usersRepository.findById.mockReturnValue(makeUser());
+    favoritesRepository.findAll.mockReturnValue([
+      makeFavorite({ mediaType: 'series', movieId: null, seriesId: 3 }),
+    ]);
 
     const result = await service.getFavorites(1);
 
@@ -104,7 +103,7 @@ describe('UsersService', () => {
   });
 
   it('retorna 404 para usuario inexistente', async () => {
-    usersRepository.findOne.mockResolvedValue(null);
+    usersRepository.findById.mockReturnValue(undefined);
 
     await expect(service.getDetail(99)).rejects.toBeInstanceOf(NotFoundException);
   });
