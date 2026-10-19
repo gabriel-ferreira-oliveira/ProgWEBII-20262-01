@@ -1,9 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Inject, Injectable } from '@nestjs/common';
 import type { SeriesDto, SeriesWatchResultDto } from '@ceviu/shared';
 import { MediaService } from '../../common/media/media-service';
 import { toSeriesDto } from '../../common/mappers';
+import { BaseRepository } from '../../framework/orm/base-repository';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { Series } from '../../database/entities/series.entity';
 import { User } from '../../database/entities/user.entity';
@@ -14,37 +13,42 @@ export class SeriesService {
   private readonly media: MediaService<Series, SeriesDto, SeriesWatchResultDto, WatchedSeries>;
 
   constructor(
-    @InjectRepository(Series)
-    series: Repository<Series>,
-    @InjectRepository(User)
-    users: Repository<User>,
-    @InjectRepository(WatchedSeries)
-    watchedSeries: Repository<WatchedSeries>,
-    @InjectRepository(Favorite)
-    favorites: Repository<Favorite>,
+    @Inject(Series)
+    series: BaseRepository<Series>,
+    @Inject(User)
+    users: BaseRepository<User>,
+    @Inject(WatchedSeries)
+    watchedSeries: BaseRepository<WatchedSeries>,
+    @Inject(Favorite)
+    favorites: BaseRepository<Favorite>,
   ) {
     this.media = new MediaService<Series, SeriesDto, SeriesWatchResultDto, WatchedSeries>({
       repository: series,
       toDto: toSeriesDto,
       notFoundMessage: 'Serie nao encontrada',
+      saveSynopsis: (id, synopsis) => {
+        series.update(id, { synopsis });
+      },
       watch: {
         usersRepository: users,
         watchedRepository: watchedSeries,
         favoritesRepository: favorites,
-        watchedEntryOf: (serie, userId, position) => ({
-          userId,
-          seriesId: serie.id,
-          titleSnapshot: serie.title,
-          position,
-        }),
-        favoriteEntryOf: (serie, userId, position) => ({
-          userId,
-          mediaType: 'series',
-          movieId: null,
-          seriesId: serie.id,
-          titleSnapshot: serie.title,
-          position,
-        }),
+        watchedEntryOf: (serie, userId, position) =>
+          Object.assign(new WatchedSeries(), {
+            userId,
+            seriesId: serie.id,
+            titleSnapshot: serie.title,
+            position,
+          }),
+        favoriteEntryOf: (serie, userId, position) =>
+          Object.assign(new Favorite(), {
+            userId,
+            mediaType: 'series',
+            movieId: null,
+            seriesId: serie.id,
+            titleSnapshot: serie.title,
+            position,
+          }),
         counterField: 'watchedSeriesMinutes',
         counterOf: (user) => user.watchedSeriesMinutes,
         toResult: (watchedSeriesMinutes) => ({ watchedSeriesMinutes }),

@@ -1,71 +1,66 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { Series } from '../../database/entities/series.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedSeries } from '../../database/entities/watched-series.entity';
 import { makeSeries, makeUser } from '../../testing/factories';
-import { createRepositoryMock } from '../../testing/repository-mock';
+import { createBaseRepositoryMock } from '../../testing/repository-mock';
 import { SeriesService } from './series.service';
 
 describe('SeriesService', () => {
   let service: SeriesService;
 
-  const seriesRepository = createRepositoryMock<Series>('find', 'findOne', 'save', 'softDelete');
-  const usersRepository = createRepositoryMock<User>('findOne', 'increment');
-  const watchedSeriesRepository = createRepositoryMock<WatchedSeries>('count', 'create', 'save');
-  const favoritesRepository = createRepositoryMock<Favorite>('count', 'create', 'save');
+  const seriesRepository = createBaseRepositoryMock<Series>('findAll', 'findById', 'update', 'delete');
+  const usersRepository = createBaseRepositoryMock<User>('findById', 'increment');
+  const watchedSeriesRepository = createBaseRepositoryMock<WatchedSeries>('count', 'insert');
+  const favoritesRepository = createBaseRepositoryMock<Favorite>('count', 'insert');
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
       providers: [
         SeriesService,
-        { provide: getRepositoryToken(Series), useValue: seriesRepository },
-        { provide: getRepositoryToken(User), useValue: usersRepository },
-        { provide: getRepositoryToken(WatchedSeries), useValue: watchedSeriesRepository },
-        { provide: getRepositoryToken(Favorite), useValue: favoritesRepository },
+        { provide: Series, useValue: seriesRepository },
+        { provide: User, useValue: usersRepository },
+        { provide: WatchedSeries, useValue: watchedSeriesRepository },
+        { provide: Favorite, useValue: favoritesRepository },
       ],
     }).compile();
     service = moduleRef.get(SeriesService);
   });
 
   it('watch soma a duracao x1 (paridade com o legado)', async () => {
-    seriesRepository.findOne.mockResolvedValue(makeSeries({ durationMin: 45 }));
-    usersRepository.findOne.mockResolvedValue(makeUser({ watchedSeriesMinutes: 10 }));
-    watchedSeriesRepository.count.mockResolvedValue(1);
-    watchedSeriesRepository.create.mockImplementation((input) => input);
-    watchedSeriesRepository.save.mockResolvedValue(undefined);
-    usersRepository.increment.mockResolvedValue({});
+    seriesRepository.findById.mockReturnValue(makeSeries({ durationMin: 45 }));
+    usersRepository.findById.mockReturnValue(makeUser({ watchedSeriesMinutes: 10 }));
+    watchedSeriesRepository.count.mockReturnValue(1);
+    watchedSeriesRepository.insert.mockImplementation((entry) => entry);
 
     const result = await service.watch(1, 3);
 
     expect(result).toEqual({ watchedSeriesMinutes: 55 });
-    expect(watchedSeriesRepository.create).toHaveBeenCalledWith({
+    expect(watchedSeriesRepository.insert).toHaveBeenCalledWith({
       userId: 3,
       seriesId: 1,
       titleSnapshot: 'Breaking Bad',
       position: 1,
     });
-    expect(usersRepository.increment).toHaveBeenCalledWith({ id: 3 }, 'watchedSeriesMinutes', 45);
+    expect(usersRepository.increment).toHaveBeenCalledWith(3, 'watchedSeriesMinutes', 45);
   });
 
   it('favorite cria historico + favorito sem somar tempo', async () => {
-    seriesRepository.findOne.mockResolvedValue(makeSeries({ durationMin: 45 }));
-    usersRepository.findOne.mockResolvedValue(makeUser({ watchedSeriesMinutes: 300 }));
-    watchedSeriesRepository.count.mockResolvedValue(0);
-    watchedSeriesRepository.create.mockImplementation((input) => input);
-    watchedSeriesRepository.save.mockResolvedValue(undefined);
-    favoritesRepository.count.mockResolvedValue(4);
-    favoritesRepository.create.mockImplementation((input) => input);
-    favoritesRepository.save.mockResolvedValue(undefined);
+    seriesRepository.findById.mockReturnValue(makeSeries({ durationMin: 45 }));
+    usersRepository.findById.mockReturnValue(makeUser({ watchedSeriesMinutes: 300 }));
+    watchedSeriesRepository.count.mockReturnValue(0);
+    watchedSeriesRepository.insert.mockImplementation((entry) => entry);
+    favoritesRepository.count.mockReturnValue(4);
+    favoritesRepository.insert.mockImplementation((entry) => entry);
 
     const result = await service.favorite(1, 3);
 
     expect(result).toEqual({ watchedSeriesMinutes: 300 });
     expect(usersRepository.increment).not.toHaveBeenCalled();
-    expect(favoritesRepository.create).toHaveBeenCalledWith({
+    expect(favoritesRepository.insert).toHaveBeenCalledWith({
       userId: 3,
       mediaType: 'series',
       movieId: null,
@@ -76,17 +71,17 @@ describe('SeriesService', () => {
   });
 
   it('retorna 404 quando a serie nao existe', async () => {
-    seriesRepository.findOne.mockResolvedValue(null);
+    seriesRepository.findById.mockReturnValue(undefined);
 
     await expect(service.findOne(99)).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('remove faz soft delete', async () => {
-    seriesRepository.findOne.mockResolvedValue(makeSeries());
-    seriesRepository.softDelete.mockResolvedValue({ affected: 1 });
+  it('remove apaga pelo id (soft delete do mini-ORM)', async () => {
+    seriesRepository.findById.mockReturnValue(makeSeries());
+    seriesRepository.delete.mockReturnValue(true);
 
     await service.remove(1);
 
-    expect(seriesRepository.softDelete).toHaveBeenCalledWith({ id: 1 });
+    expect(seriesRepository.delete).toHaveBeenCalledWith(1);
   });
 });

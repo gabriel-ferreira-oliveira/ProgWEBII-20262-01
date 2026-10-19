@@ -1,38 +1,37 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { Favorite } from '../../database/entities/favorite.entity';
 import { Movie } from '../../database/entities/movie.entity';
 import { User } from '../../database/entities/user.entity';
 import { WatchedMovie } from '../../database/entities/watched-movie.entity';
 import { makeFavorite, makeMovie, makeUser, makeWatchedMovie } from '../../testing/factories';
-import { createRepositoryMock } from '../../testing/repository-mock';
+import { createBaseRepositoryMock } from '../../testing/repository-mock';
 import { MoviesService } from './movies.service';
 
 describe('MoviesService', () => {
   let service: MoviesService;
 
-  const moviesRepository = createRepositoryMock<Movie>('find', 'findOne', 'save', 'softDelete');
-  const usersRepository = createRepositoryMock<User>('findOne', 'increment');
-  const watchedMoviesRepository = createRepositoryMock<WatchedMovie>('count', 'create', 'save');
-  const favoritesRepository = createRepositoryMock<Favorite>('count', 'create', 'save');
+  const moviesRepository = createBaseRepositoryMock<Movie>('findAll', 'findById', 'update', 'delete');
+  const usersRepository = createBaseRepositoryMock<User>('findById', 'increment');
+  const watchedMoviesRepository = createBaseRepositoryMock<WatchedMovie>('count', 'insert');
+  const favoritesRepository = createBaseRepositoryMock<Favorite>('count', 'insert');
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
       providers: [
         MoviesService,
-        { provide: getRepositoryToken(Movie), useValue: moviesRepository },
-        { provide: getRepositoryToken(User), useValue: usersRepository },
-        { provide: getRepositoryToken(WatchedMovie), useValue: watchedMoviesRepository },
-        { provide: getRepositoryToken(Favorite), useValue: favoritesRepository },
+        { provide: Movie, useValue: moviesRepository },
+        { provide: User, useValue: usersRepository },
+        { provide: WatchedMovie, useValue: watchedMoviesRepository },
+        { provide: Favorite, useValue: favoritesRepository },
       ],
     }).compile();
     service = moduleRef.get(MoviesService);
   });
 
   it('lista o catalogo mapeado para DTO', async () => {
-    moviesRepository.find.mockResolvedValue([makeMovie({ id: 1 }), makeMovie({ id: 2, title: 'Outro' })]);
+    moviesRepository.findAll.mockReturnValue([makeMovie({ id: 1 }), makeMovie({ id: 2, title: 'Outro' })]);
 
     const result = await service.list();
 
@@ -43,47 +42,42 @@ describe('MoviesService', () => {
   });
 
   it('retorna 404 quando o filme nao existe', async () => {
-    moviesRepository.findOne.mockResolvedValue(null);
+    moviesRepository.findById.mockReturnValue(undefined);
 
     await expect(service.findOne(99)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('watcha: cria historico na proxima posicao e soma a duracao', async () => {
-    moviesRepository.findOne.mockResolvedValue(makeMovie({ durationMin: 136 }));
-    usersRepository.findOne.mockResolvedValue(makeUser({ watchedMovieMinutes: 10 }));
-    watchedMoviesRepository.count.mockResolvedValue(2);
-    watchedMoviesRepository.create.mockImplementation((input) => input);
-    watchedMoviesRepository.save.mockResolvedValue(undefined);
-    usersRepository.increment.mockResolvedValue({});
+    moviesRepository.findById.mockReturnValue(makeMovie({ durationMin: 136 }));
+    usersRepository.findById.mockReturnValue(makeUser({ watchedMovieMinutes: 10 }));
+    watchedMoviesRepository.count.mockReturnValue(2);
+    watchedMoviesRepository.insert.mockImplementation((entry) => entry);
 
     const result = await service.watch(1, 7);
 
     expect(result).toEqual({ watchedMovieMinutes: 146 });
-    expect(watchedMoviesRepository.create).toHaveBeenCalledWith({
+    expect(watchedMoviesRepository.insert).toHaveBeenCalledWith({
       userId: 7,
       movieId: 1,
       titleSnapshot: 'Matriz',
       position: 2,
     });
-    expect(usersRepository.increment).toHaveBeenCalledWith({ id: 7 }, 'watchedMovieMinutes', 136);
+    expect(usersRepository.increment).toHaveBeenCalledWith(7, 'watchedMovieMinutes', 136);
   });
 
   it('favorite: cria historico + favorito e soma a duracao uma vez (D-04)', async () => {
-    moviesRepository.findOne.mockResolvedValue(makeMovie({ durationMin: 90 }));
-    usersRepository.findOne.mockResolvedValue(makeUser({ watchedMovieMinutes: 0 }));
-    watchedMoviesRepository.count.mockResolvedValue(0);
-    watchedMoviesRepository.create.mockImplementation((input) => input);
-    watchedMoviesRepository.save.mockResolvedValue(undefined);
-    favoritesRepository.count.mockResolvedValue(0);
-    favoritesRepository.create.mockImplementation((input) => input);
-    favoritesRepository.save.mockResolvedValue(undefined);
-    usersRepository.increment.mockResolvedValue({});
+    moviesRepository.findById.mockReturnValue(makeMovie({ durationMin: 90 }));
+    usersRepository.findById.mockReturnValue(makeUser({ watchedMovieMinutes: 0 }));
+    watchedMoviesRepository.count.mockReturnValue(0);
+    watchedMoviesRepository.insert.mockImplementation((entry) => entry);
+    favoritesRepository.count.mockReturnValue(0);
+    favoritesRepository.insert.mockImplementation((entry) => entry);
 
     const result = await service.favorite(1, 7);
 
     expect(result).toEqual({ watchedMovieMinutes: 90 });
-    expect(watchedMoviesRepository.save).toHaveBeenCalledTimes(1);
-    expect(favoritesRepository.create).toHaveBeenCalledWith({
+    expect(watchedMoviesRepository.insert).toHaveBeenCalledTimes(1);
+    expect(favoritesRepository.insert).toHaveBeenCalledWith({
       userId: 7,
       mediaType: 'movie',
       movieId: 1,
@@ -91,15 +85,14 @@ describe('MoviesService', () => {
       titleSnapshot: 'Matriz',
       position: 0,
     });
-    expect(usersRepository.increment).toHaveBeenCalledWith({ id: 7 }, 'watchedMovieMinutes', 90);
+    expect(usersRepository.increment).toHaveBeenCalledWith(7, 'watchedMovieMinutes', 90);
   });
 
   it('nao soma tempo quando a duracao e nula', async () => {
-    moviesRepository.findOne.mockResolvedValue(makeMovie({ durationMin: null }));
-    usersRepository.findOne.mockResolvedValue(makeUser({ watchedMovieMinutes: 50 }));
-    watchedMoviesRepository.count.mockResolvedValue(0);
-    watchedMoviesRepository.create.mockImplementation((input) => input);
-    watchedMoviesRepository.save.mockResolvedValue(undefined);
+    moviesRepository.findById.mockReturnValue(makeMovie({ durationMin: null }));
+    usersRepository.findById.mockReturnValue(makeUser({ watchedMovieMinutes: 50 }));
+    watchedMoviesRepository.count.mockReturnValue(0);
+    watchedMoviesRepository.insert.mockImplementation((entry) => entry);
 
     const result = await service.watch(1, 1);
 
@@ -107,22 +100,23 @@ describe('MoviesService', () => {
     expect(usersRepository.increment).not.toHaveBeenCalled();
   });
 
-  it('remove faz soft delete', async () => {
-    moviesRepository.findOne.mockResolvedValue(makeMovie());
-    moviesRepository.softDelete.mockResolvedValue({ affected: 1 });
+  it('remove apaga pelo id (soft delete do mini-ORM)', async () => {
+    moviesRepository.findById.mockReturnValue(makeMovie());
+    moviesRepository.delete.mockReturnValue(true);
 
     await service.remove(1);
 
-    expect(moviesRepository.softDelete).toHaveBeenCalledWith({ id: 1 });
+    expect(moviesRepository.delete).toHaveBeenCalledWith(1);
   });
 
   it('updateSynopsis altera somente a sinopse', async () => {
-    const movie = makeMovie();
-    moviesRepository.findOne.mockResolvedValue(movie);
-    moviesRepository.save.mockImplementation((input) => Promise.resolve(input));
+    moviesRepository.findById
+      .mockReturnValueOnce(makeMovie())
+      .mockReturnValueOnce(makeMovie({ synopsis: 'Nova sinopse' }));
 
     const result = await service.updateSynopsis(1, 'Nova sinopse');
 
+    expect(moviesRepository.update).toHaveBeenCalledWith(1, { synopsis: 'Nova sinopse' });
     expect(result.synopsis).toBe('Nova sinopse');
     expect(result.title).toBe('Matriz');
   });

@@ -1,10 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import type {
-  DeepPartial,
-  FindOptionsOrder,
-  FindOptionsWhere,
-  Repository,
-} from 'typeorm';
+import type { BaseRepository } from '../../framework/orm/base-repository';
 import type { Favorite } from '../../database/entities/favorite.entity';
 import type { User } from '../../database/entities/user.entity';
 
@@ -26,15 +21,17 @@ export interface MediaRuntime<
   TWatchResult,
   TWatched extends WatchedEntryShape,
 > {
-  readonly repository: Repository<TEntity>;
+  readonly repository: BaseRepository<TEntity>;
   readonly toDto: (entity: TEntity) => TDto;
   readonly notFoundMessage: string;
+  /** Atualiza a sinopse pelo id (concreto por tipo, como os `*EntryOf`: o `update` da `BaseRepository` só tipa bem sem generico). */
+  readonly saveSynopsis: (id: number, synopsis: string) => void;
   readonly watch: {
-    readonly usersRepository: Repository<User>;
-    readonly watchedRepository: Repository<TWatched>;
-    readonly favoritesRepository: Repository<Favorite>;
-    readonly watchedEntryOf: (entity: TEntity, userId: number, position: number) => DeepPartial<TWatched>;
-    readonly favoriteEntryOf: (entity: TEntity, userId: number, position: number) => DeepPartial<Favorite>;
+    readonly usersRepository: BaseRepository<User>;
+    readonly watchedRepository: BaseRepository<TWatched>;
+    readonly favoritesRepository: BaseRepository<Favorite>;
+    readonly watchedEntryOf: (entity: TEntity, userId: number, position: number) => TWatched;
+    readonly favoriteEntryOf: (entity: TEntity, userId: number, position: number) => Favorite;
     readonly counterField: UserMinutesField;
     readonly counterOf: (user: User) => number;
     readonly toResult: (minutes: number) => TWatchResult;
@@ -52,11 +49,9 @@ export class MediaService<
   constructor(private readonly runtime: MediaRuntime<TEntity, TDto, TWatchResult, TWatched>) {}
 
   async list(): Promise<TDto[]> {
-    // Os casts sao da limitacao dos mapped types do TypeORM com TEntity generico.
-    const entities = await this.runtime.repository.find({
-      order: { id: 'ASC' } as FindOptionsOrder<TEntity>,
-    });
-    return entities.map((entity) => this.runtime.toDto(entity));
+    return this.runtime.repository
+      .findAll({ order: { id: 'ASC' } })
+      .map((entity) => this.runtime.toDto(entity));
   }
 
   async findOne(id: number): Promise<TDto> {
@@ -64,26 +59,22 @@ export class MediaService<
   }
 
   async findEntity(id: number): Promise<TEntity> {
-    const entity = await this.runtime.repository.findOne({
-      // O generico nao resolve `FindOptionsWhereProperty` para TEntity["id"]; o cast e seguro (id: number).
-      where: { id } as FindOptionsWhere<TEntity>,
-    });
-    if (entity === null) {
+    const entity = this.runtime.repository.findById(id);
+    if (entity === undefined) {
       throw new NotFoundException(this.runtime.notFoundMessage);
     }
     return entity;
   }
 
   async updateSynopsis(id: number, synopsis: string): Promise<TDto> {
-    const entity = await this.findEntity(id);
-    entity.synopsis = synopsis;
-    const saved = await this.runtime.repository.save(entity);
-    return this.runtime.toDto(saved);
+    await this.findEntity(id);
+    this.runtime.saveSynopsis(id, synopsis);
+    return this.runtime.toDto(await this.findEntity(id));
   }
 
   async remove(id: number): Promise<void> {
     await this.findEntity(id);
-    await this.runtime.repository.softDelete({ id } as FindOptionsWhere<TEntity>);
+    this.runtime.repository.delete(id);
   }
 
   async watch(id: number, userId: number): Promise<TWatchResult> {
@@ -99,32 +90,26 @@ export class MediaService<
     const entity = await this.findEntity(id);
     const user = await this.findUser(userId);
 
-    const position = await watch.watchedRepository.count({
-      where: { userId } as FindOptionsWhere<TWatched>,
-    });
-    const entry = watch.watchedRepository.create(watch.watchedEntryOf(entity, userId, position));
-    await watch.watchedRepository.save(entry);
+    const position = watch.watchedRepository.count({ where: { userId } });
+    watch.watchedRepository.insert(watch.watchedEntryOf(entity, userId, position));
 
     const countTime = options.favorite ? watch.countTimeOnFavorite : true;
     const minutes = countTime ? (entity.durationMin ?? 0) : 0;
     if (minutes > 0) {
-      await watch.usersRepository.increment({ id: userId }, watch.counterField, minutes);
+      watch.usersRepository.increment(userId, watch.counterField, minutes);
     }
 
     if (options.favorite) {
-      const favoritePosition = await watch.favoritesRepository.count({ where: { userId } });
-      const favorite = watch.favoritesRepository.create(
-        watch.favoriteEntryOf(entity, userId, favoritePosition),
-      );
-      await watch.favoritesRepository.save(favorite);
+      const favoritePosition = watch.favoritesRepository.count({ where: { userId } });
+      watch.favoritesRepository.insert(watch.favoriteEntryOf(entity, userId, favoritePosition));
     }
 
     return watch.toResult(watch.counterOf(user) + minutes);
   }
 
   private async findUser(userId: number): Promise<User> {
-    const user = await this.runtime.watch.usersRepository.findOne({ where: { id: userId } });
-    if (user === null) {
+    const user = this.runtime.watch.usersRepository.findById(userId);
+    if (user === undefined) {
       throw new NotFoundException('Usuario nao encontrado');
     }
     return user;

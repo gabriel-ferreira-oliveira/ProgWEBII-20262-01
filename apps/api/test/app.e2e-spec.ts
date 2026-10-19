@@ -1,10 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import type { Response } from 'supertest';
-import type { Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import type {
   FavoriteEntryDto,
   FormMetadata,
@@ -36,13 +35,13 @@ describe('CeViu API (e2e)', () => {
     await app.init();
     httpServer = app.getHttpServer() as Server;
 
-    const moviesRepository = app.get<Repository<Movie>>(getRepositoryToken(Movie));
-    await moviesRepository.save([
+    // Seed pelo TypeORM ainda dono do schema (migra para o mini-ORM na T5.9.13).
+    const dataSource = app.get(DataSource);
+    await dataSource.getRepository(Movie).save([
       { id: 1, title: 'Matriz', genre: 'Ficcao', synopsis: 'Sinopse 1', year: 1999, durationMin: 136 },
       { id: 2, title: 'O Senhor dos Aneis', genre: 'Fantasia', synopsis: 'Sinopse 2', year: 2001, durationMin: 178 },
     ]);
-    const seriesRepository = app.get<Repository<Series>>(getRepositoryToken(Series));
-    await seriesRepository.save([
+    await dataSource.getRepository(Series).save([
       { id: 1, title: 'Breaking Bad', genre: 'Drama', synopsis: 'Sinopse 1', year: 2008, durationMin: 45, episodes: 62 },
     ]);
   });
