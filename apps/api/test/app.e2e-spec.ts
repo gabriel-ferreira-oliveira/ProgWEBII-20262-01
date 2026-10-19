@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import type { Response } from 'supertest';
-import { DataSource } from 'typeorm';
 import type {
   FavoriteEntryDto,
   FormMetadata,
@@ -16,6 +15,7 @@ import type {
 import { AppModule } from '../src/app.module';
 import { Movie } from '../src/database/entities/movie.entity';
 import { Series } from '../src/database/entities/series.entity';
+import type { BaseRepository } from '../src/framework/orm/base-repository';
 import { configureApp } from '../src/setup-app';
 
 function readJson<T>(response: Response): T {
@@ -35,15 +35,40 @@ describe('CeViu API (e2e)', () => {
     await app.init();
     httpServer = app.getHttpServer() as Server;
 
-    // Seed pelo TypeORM ainda dono do schema (migra para o mini-ORM na T5.9.13).
-    const dataSource = app.get(DataSource);
-    await dataSource.getRepository(Movie).save([
-      { id: 1, title: 'Matriz', genre: 'Ficcao', synopsis: 'Sinopse 1', year: 1999, durationMin: 136 },
-      { id: 2, title: 'O Senhor dos Aneis', genre: 'Fantasia', synopsis: 'Sinopse 2', year: 2001, durationMin: 178 },
-    ]);
-    await dataSource.getRepository(Series).save([
-      { id: 1, title: 'Breaking Bad', genre: 'Drama', synopsis: 'Sinopse 1', year: 2008, durationMin: 45, episodes: 62 },
-    ]);
+    // Seed pelo mini-ORM com PK explicita (como no import do banco legado).
+    const movies = app.get<BaseRepository<Movie>>(Movie);
+    movies.insert(
+      Object.assign(new Movie(), {
+        id: 1,
+        title: 'Matriz',
+        genre: 'Ficcao',
+        synopsis: 'Sinopse 1',
+        year: 1999,
+        durationMin: 136,
+      }),
+    );
+    movies.insert(
+      Object.assign(new Movie(), {
+        id: 2,
+        title: 'O Senhor dos Aneis',
+        genre: 'Fantasia',
+        synopsis: 'Sinopse 2',
+        year: 2001,
+        durationMin: 178,
+      }),
+    );
+    const series = app.get<BaseRepository<Series>>(Series);
+    series.insert(
+      Object.assign(new Series(), {
+        id: 1,
+        title: 'Breaking Bad',
+        genre: 'Drama',
+        synopsis: 'Sinopse 1',
+        year: 2008,
+        durationMin: 45,
+        episodes: 62,
+      }),
+    );
   });
 
   afterAll(async () => {
