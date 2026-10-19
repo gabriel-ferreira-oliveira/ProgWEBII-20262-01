@@ -20,72 +20,47 @@
   </form>
 </fieldset>
 
-<section class="secao">
-  <header class="secao__cabecalho">
-    <h2 class="titulo-secao">Filmes Populares</h2>
-    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="verTodosFilmes()">
-      Ver mais
-    </button>
-  </header>
-
-  @if (filmes.isLoading()) {
-    <mat-progress-bar mode="indeterminate" />
-  } @else if (filmes.error()) {
-    <p class="erro-carregamento">
-      Falha ao carregar os filmes.
-      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="filmes.reload()">
-        Tentar novamente
+@for (secao of secoes; track secao.entrada.metadados.key) {
+  <section class="secao">
+    <header class="secao__cabecalho">
+      <h2 class="titulo-secao">{{ secao.entrada.metadados.popularTitle }}</h2>
+      <button
+        class="btn-ceviu btn-ceviu--secundario"
+        type="button"
+        (click)="verMais(secao.entrada.metadados.key)"
+      >
+        Ver mais
       </button>
-    </p>
-  } @else {
-    <div class="grid-ceviu">
-      <div class="grid-ceviu__linha grid-ceviu__linha--4">
-        @for (filme of filmesPopulares(); track filme.id) {
-          <app-media-card
-            [imagePath]="caminhoFilme(filme.id)"
-            [imageWidth]="100"
-            [imageHeight]="150"
-            [title]="filme.title"
-            [lines]="linhasFilme(filme)"
-            (select)="abrirFilme(filme)"
-          />
-        }
-      </div>
-    </div>
-  }
-</section>
+    </header>
 
-<section class="secao">
-  <header class="secao__cabecalho">
-    <h2 class="titulo-secao">Series Populares</h2>
-    <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="verTodasSeries()">
-      Ver mais
-    </button>
-  </header>
-
-  @if (series.isLoading()) {
-    <mat-progress-bar mode="indeterminate" />
-  } @else if (series.error()) {
-    <p class="erro-carregamento">
-      Falha ao carregar as series.
-      <button class="btn-ceviu btn-ceviu--secundario" type="button" (click)="series.reload()">
-        Tentar novamente
-      </button>
-    </p>
-  } @else {
-    <div class="grid-ceviu">
-      <div class="grid-ceviu__linha grid-ceviu__linha--4">
-        @for (serie of seriesPopulares(); track serie.id) {
-          <app-media-card
-            [imagePath]="caminhoSerie(serie.id)"
-            [imageWidth]="100"
-            [imageHeight]="150"
-            [title]="serie.title"
-            [lines]="linhasSerie(serie)"
-            (select)="abrirSerie(serie)"
-          />
-        }
+    @if (secao.resource.isLoading()) {
+      <mat-progress-bar mode="indeterminate" />
+    } @else if (secao.resource.error()) {
+      <p class="erro-carregamento">
+        {{ secao.entrada.metadados.listErrorMessage }}
+        <button
+          class="btn-ceviu btn-ceviu--secundario"
+          type="button"
+          (click)="secao.resource.reload()"
+        >
+          Tentar novamente
+        </button>
+      </p>
+    } @else {
+      <div class="grid-ceviu">
+        <div class="grid-ceviu__linha grid-ceviu__linha--4">
+          @for (midia of populares(secao); track midia.id) {
+            <app-media-card
+              [imagePath]="secao.entrada.metadados.imagePath(midia.id)"
+              [imageWidth]="100"
+              [imageHeight]="150"
+              [title]="midia.title"
+              [lines]="secao.entrada.metadados.cardLines(midia)"
+              (select)="abrir(secao, midia)"
+            />
+          }
+        </div>
       </div>
-    </div>
-  }
-</section>
+    }
+  </section>
+}

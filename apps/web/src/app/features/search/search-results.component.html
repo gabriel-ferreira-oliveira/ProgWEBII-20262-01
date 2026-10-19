@@ -8,47 +8,29 @@
     </button>
   </p>
 } @else if (resultados.value(); as resultado) {
-  <h1 class="titulo-pagina resultados__titulo">
-    Resultados da Pesquisa ({{ resultado.movies.length }} filmes,
-    {{ resultado.series.length }} séries)
-  </h1>
+  <h1 class="titulo-pagina resultados__titulo">Resultados da Pesquisa ({{ contagens() }})</h1>
 
-  @if (resultado.movies.length > 0) {
-    <section class="secao">
-      <h2 class="titulo-secao">Filmes ({{ resultado.movies.length }})</h2>
-      <div class="resultados__grade">
-        @for (filme of resultado.movies; track filme.id) {
-          <app-media-card
-            [imagePath]="caminhoFilme(filme.id)"
-            [imageWidth]="180"
-            [imageHeight]="240"
-            [title]="filme.title"
-            [lines]="linhaFilme(filme)"
-            actionLabel="Ver Detalhes"
-            (select)="abrirFilme(filme)"
-          />
-        }
-      </div>
-    </section>
-  }
-
-  @if (resultado.series.length > 0) {
-    <section class="secao">
-      <h2 class="titulo-secao">Séries ({{ resultado.series.length }})</h2>
-      <div class="resultados__grade">
-        @for (serie of resultado.series; track serie.id) {
-          <app-media-card
-            [imagePath]="caminhoSerie(serie.id)"
-            [imageWidth]="180"
-            [imageHeight]="240"
-            [title]="serie.title"
-            [lines]="linhaSerie(serie)"
-            actionLabel="Ver Detalhes"
-            (select)="abrirSerie(serie)"
-          />
-        }
-      </div>
-    </section>
+  @for (secao of secoes(); track secao.entrada.metadados.key) {
+    @if (secao.itens.length > 0) {
+      <section class="secao">
+        <h2 class="titulo-secao">
+          {{ secao.entrada.metadados.searchSectionLabel }} ({{ secao.itens.length }})
+        </h2>
+        <div class="resultados__grade">
+          @for (item of secao.itens; track item.id) {
+            <app-media-card
+              [imagePath]="secao.entrada.metadados.imagePath(item.id)"
+              [imageWidth]="180"
+              [imageHeight]="240"
+              [title]="item.title"
+              [lines]="secao.entrada.metadados.searchLine(item)"
+              actionLabel="Ver Detalhes"
+              (select)="abrir(secao, item)"
+            />
+          }
+        </div>
+      </section>
+    }
   }
 
   @if (vazio()) {

@@ -1,16 +1,16 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, Injector, OnInit, computed, inject, type ResourceRef } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
-import type { FormRule, MovieDto, SeriesDto } from '@ceviu/shared';
-import { MoviesApiService } from '../../core/api/movies-api.service';
-import { SeriesApiService } from '../../core/api/series-api.service';
+import type { FormRule } from '@ceviu/shared';
 import { MetadataApiService } from '../../core/forms/metadata-api.service';
+import type { MediaResumo } from '../../core/media/media-kind';
+import type { MediaKindEntry } from '../../core/media/media-kind.registry';
+import { MediaKindRegistry } from '../../core/media/media-kind.registry';
 import { NoticeService } from '../../core/notices/notice.service';
 import { MediaCardComponent } from '../../shared/media-card/media-card.component';
-import { caminhoImagemFilme, caminhoImagemSerie, formatNumber, formatText } from '../../shared/utils/format';
 import { MediaDetailsDialogComponent } from '../dialogs/media-details-dialog/media-details-dialog.component';
 import type {
   MediaDetailsDialogData,
@@ -23,9 +23,17 @@ const TOTAL_POPULARES = 4;
 /** Formulario publicado pela API para o filtro de pesquisa (`GET /api/metadata/search-catalog`). */
 const FORM_PESQUISA = 'search-catalog';
 
+/** Secao "Populares" de um tipo de midia (uma por `@MediaKind` registrado). */
+interface SecaoPopular {
+  readonly entrada: MediaKindEntry;
+  readonly resource: ResourceRef<MediaResumo[] | undefined>;
+}
+
 /**
- * Tela Principal (FramePrincipal): painel "Pesquisar" (Nome/ID),
- * "Filmes Populares" e "Series Populares" (4 cards + "Ver mais").
+ * Tela Principal (FramePrincipal): painel "Pesquisar" (Nome/ID) e uma secao
+ * "Populares" por tipo de midia do registry (4 cards + "Ver mais") — uma secao
+ * cobre filmes, series e tipos futuros. Titulo, mensagens, imagens e linhas de
+ * card vem do descritor `@MediaKind`.
  * A busca usa a regra `exactlyOneOf` publicada pela API (T2.7/T3.4): as mensagens
  * e os filtros vem do servidor — nada de regra duplicada aqui.
  */
@@ -37,22 +45,18 @@ const FORM_PESQUISA = 'search-catalog';
 })
 export class HomeComponent implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
-  private readonly moviesApi = inject(MoviesApiService);
-  private readonly seriesApi = inject(SeriesApiService);
   private readonly metadataApi = inject(MetadataApiService);
   private readonly notices = inject(NoticeService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
+  private readonly registry = inject(MediaKindRegistry);
+  private readonly injector = inject(Injector);
 
-  protected readonly filmes = rxResource({ stream: () => this.moviesApi.list() });
-  protected readonly series = rxResource({ stream: () => this.seriesApi.list() });
-
-  protected readonly filmesPopulares = computed(() =>
-    (this.filmes.value() ?? []).slice(0, TOTAL_POPULARES),
-  );
-  protected readonly seriesPopulares = computed(() =>
-    (this.series.value() ?? []).slice(0, TOTAL_POPULARES),
-  );
+  /** Secoes da home: um recurso de lista por tipo registrado. */
+  protected readonly secoes: readonly SecaoPopular[] = this.registry.entradas().map((entrada) => ({
+    entrada,
+    resource: rxResource({ stream: () => this.injector.get(entrada.api).list() }),
+  }));
 
   /** Regra `exactlyOneOf` do descritor (properties da pesquisa + mensagens do servidor). */
   protected readonly regraPesquisa = computed<FormRule | undefined>(() =>
@@ -69,20 +73,12 @@ export class HomeComponent implements OnInit {
     this.metadataApi.carregar(FORM_PESQUISA);
   }
 
-  protected caminhoFilme(id: number): string {
-    return caminhoImagemFilme(id);
+  protected populares(secao: SecaoPopular): readonly MediaResumo[] {
+    return (secao.resource.value() ?? []).slice(0, TOTAL_POPULARES);
   }
 
-  protected caminhoSerie(id: number): string {
-    return caminhoImagemSerie(id);
-  }
-
-  protected linhasFilme(filme: MovieDto): string[] {
-    return [`Ano: ${formatNumber(filme.year)}`, `Gênero: ${formatText(filme.genre)}`];
-  }
-
-  protected linhasSerie(serie: SeriesDto): string[] {
-    return [`Ano: ${formatNumber(serie.year)}`, `Gênero: ${formatText(serie.genre)}`];
+  protected verMais(key: string): void {
+    void this.router.navigate(['/media', key]);
   }
 
   /** Regras do bloco COMANDO_PESQUISA do legado, dirigidas pela regra `exactlyOneOf` do servidor. */
@@ -114,21 +110,13 @@ export class HomeComponent implements OnInit {
     this.form.reset();
   }
 
-  protected verTodosFilmes(): void {
-    void this.router.navigate(['/media', 'movies']);
-  }
-
-  protected verTodasSeries(): void {
-    void this.router.navigate(['/media', 'series']);
-  }
-
-  protected abrirFilme(filme: MovieDto): void {
+  protected abrir(secao: SecaoPopular, midia: MediaResumo): void {
     const ref = this.dialog.open<
       MediaDetailsDialogComponent,
       MediaDetailsDialogData,
       MediaDetailsDialogResult
     >(MediaDetailsDialogComponent, {
-      data: { kind: 'movies', id: filme.id },
+      data: { kind: secao.entrada.metadados.key, id: midia.id },
       width: '900px',
       maxWidth: '95vw',
       autoFocus: false,
@@ -137,26 +125,7 @@ export class HomeComponent implements OnInit {
       if (result?.deleted === true) {
         void this.router.navigate(['/home']);
       }
-      this.filmes.reload();
-    });
-  }
-
-  protected abrirSerie(serie: SeriesDto): void {
-    const ref = this.dialog.open<
-      MediaDetailsDialogComponent,
-      MediaDetailsDialogData,
-      MediaDetailsDialogResult
-    >(MediaDetailsDialogComponent, {
-      data: { kind: 'series', id: serie.id },
-      width: '900px',
-      maxWidth: '95vw',
-      autoFocus: false,
-    });
-    ref.afterClosed().subscribe((result) => {
-      if (result?.deleted === true) {
-        void this.router.navigate(['/home']);
-      }
-      this.series.reload();
+      secao.resource.reload();
     });
   }
 }
